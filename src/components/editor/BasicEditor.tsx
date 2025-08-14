@@ -3,6 +3,7 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useEffect } from 'react';
+import { cn } from '@/lib/utils';
 
 type BasicEditorProps = {
   initialContent?: string;
@@ -16,7 +17,7 @@ export default function BasicEditor({ initialContent, className }: BasicEditorPr
     content: initialContent ?? '<p>Hello TipTap 👋</p>',
     editorProps: {
       attributes: {
-        class: 'prose max-w-none focus:outline-none',
+        class: 'dark:prose-invert max-w-none focus:outline-none h-full w-full overflow-auto px-4 py-1 md:px-6 md:py-4',
       },
     },
   });
@@ -29,8 +30,8 @@ export default function BasicEditor({ initialContent, className }: BasicEditorPr
   }, [editor]);
 
   return (
-    <div className={className}>
-      <EditorContent editor={editor} />
+    <div className={cn('flex min-h-0 flex-col', className)}>
+      <EditorContent editor={editor} className="min-h-0 w-full flex-1 overflow-hidden" />
     </div>
   );
 }

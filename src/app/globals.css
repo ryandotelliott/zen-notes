@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@plugin '@tailwindcss/typography';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -119,10 +120,4 @@
   body {
     @apply bg-background text-foreground;
   }
-}
-
-/* Basic prose styling for TipTap content */
-.prose {
-  --tw-prose-body: theme(colors.foreground);
-  --tw-prose-headings: theme(colors.foreground);
 }
