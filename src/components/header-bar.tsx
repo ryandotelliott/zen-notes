@@ -12,11 +12,11 @@ type Props = {
 export default function HeaderBar({ className }: Props) {
   return (
     <div className={cn('flex w-full items-center justify-between p-4', className)}>
-      <Button variant="ghost" size="icon">
+      <Button variant="ghost" size="icon-lg">
         <Sidebar />
       </Button>
       <p className="text-sm font-medium text-muted-foreground">Note Name</p>
-      <Button variant="ghost" size="icon">
+      <Button variant="ghost" size="icon-lg">
         <MessageCircle />
       </Button>
     </div>
