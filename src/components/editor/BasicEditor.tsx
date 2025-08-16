@@ -30,7 +30,7 @@ export default function BasicEditor({ initialContent, className }: BasicEditorPr
   }, [editor]);
 
   return (
-    <div className={cn('flex min-h-0 flex-col', className)}>
+    <div className={cn('flex min-h-0 flex-col bg-card', className)}>
       <EditorContent editor={editor} className="min-h-0 w-full flex-1 overflow-hidden" />
     </div>
   );
