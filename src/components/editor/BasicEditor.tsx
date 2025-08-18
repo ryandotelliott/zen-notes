@@ -4,6 +4,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Highlight from '@tiptap/extension-highlight';
+import { Placeholder } from '@tiptap/extensions';
 import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import EditorToolbar from './EditorToolbar';
@@ -16,8 +17,8 @@ type BasicEditorProps = {
 export default function BasicEditor({ initialContent, className }: BasicEditorProps) {
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: [StarterKit, Underline, Highlight],
-    content: initialContent ?? '<p>Hello TipTap 👋</p>',
+    extensions: [StarterKit, Underline, Highlight, Placeholder.configure({ placeholder: 'Write something...' })],
+    content: initialContent ?? '',
     editorProps: {
       attributes: {
         class: 'dark:prose-invert max-w-none focus:outline-none h-full w-full overflow-auto',
@@ -38,7 +39,7 @@ export default function BasicEditor({ initialContent, className }: BasicEditorPr
       </header>
 
       <aside className="col-start-1 row-start-2">
-        <EditorToolbar editor={editor} />
+        <EditorToolbar editor={editor} className="rounded p-2" />
       </aside>
 
       <main className="col-start-2 row-start-2 min-h-0 overflow-hidden">
