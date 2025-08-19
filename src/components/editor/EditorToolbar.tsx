@@ -29,10 +29,14 @@ export default function EditorToolbar({ editor, className }: EditorToolbarProps)
     // NOTE: If we are getting bad performance, we can use requestAnimationFrame
     // to limit the number of rerenders.
     const handler = () => forceUpdate();
-    editor.on('selectionUpdate', handler);
+    editor.on('transaction', handler);
+    editor.on('focus', handler);
+    editor.on('blur', handler);
 
     return () => {
-      editor.off('selectionUpdate', handler);
+      editor.off('transaction', handler);
+      editor.off('focus', handler);
+      editor.off('blur', handler);
     };
   }, [editor]);
 
@@ -102,7 +106,7 @@ export default function EditorToolbar({ editor, className }: EditorToolbarProps)
                   <Tooltip key={item.label}>
                     <TooltipTrigger asChild>
                       <Button
-                        variant={item.isActive ? 'outline' : 'ghost'}
+                        variant={item.isActive ? 'default' : 'ghost'} // TODO: Animate on state change
                         size="sm"
                         className="h-8 w-8 p-0"
                         onClick={item.action}
