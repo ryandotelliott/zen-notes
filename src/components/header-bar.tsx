@@ -1,9 +1,10 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { MessageCircle, Sidebar } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 import React from 'react';
 import { Button } from './ui/button';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 type Props = {
   className?: string;
@@ -12,9 +13,7 @@ type Props = {
 export default function HeaderBar({ className }: Props) {
   return (
     <div className={cn('flex w-full items-center justify-between p-4', className)}>
-      <Button variant="ghost" size="icon-lg">
-        <Sidebar />
-      </Button>
+      <SidebarTrigger className="h-10 w-10" />
       <p className="text-sm font-medium text-muted-foreground">Note Name</p>
       <Button variant="ghost" size="icon-lg">
         <MessageCircle />
