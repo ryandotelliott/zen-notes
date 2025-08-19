@@ -159,10 +159,6 @@
 
 /* TipTap Placeholder Styles */
 .tiptap p.is-editor-empty:first-child::before {
-  color: hsl(var(--muted-foreground));
   content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-  opacity: 0.5;
+  @apply pointer-events-none float-left h-0 text-muted-foreground/50;
 }
