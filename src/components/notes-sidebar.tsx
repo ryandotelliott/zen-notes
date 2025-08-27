@@ -17,17 +17,20 @@ import {
 } from '@/components/ui/sidebar';
 import { MoreHorizontal, Plus, Edit, Trash2 } from 'lucide-react';
 import { useNotesStore } from '@/stores/notes-store';
+import { useNoteSearch } from '@/hooks/use-note-search';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Input } from './ui/input';
 import { cn } from '@/lib/utils';
 
 export default function NotesSidebar() {
-  const notes = useNotesStore((s) => s.notes);
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId);
   const addNote = useNotesStore((s) => s.addNote);
   const deleteNote = useNotesStore((s) => s.deleteNote);
   const selectNote = useNotesStore((s) => s.selectNote);
   const updateNote = useNotesStore((s) => s.updateNote);
+
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const filteredNotes = useNoteSearch(searchQuery);
 
   const [renamingNoteId, setRenamingNoteId] = useState<string | null>(null);
   const [renamingNoteTitle, setRenamingNoteTitle] = useState<string>('');
@@ -58,7 +61,11 @@ export default function NotesSidebar() {
   return (
     <Sidebar side="left" variant="floating" collapsible="offcanvas" className="">
       <SidebarHeader>
-        <SidebarInput placeholder="Search notes..." />
+        <SidebarInput
+          placeholder="Search notes..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
       </SidebarHeader>
 
       <SidebarContent>
@@ -69,7 +76,7 @@ export default function NotesSidebar() {
           </SidebarGroupAction>
           <SidebarGroupContent>
             <SidebarMenu>
-              {notes.map((note) => (
+              {filteredNotes.map((note) => (
                 <SidebarMenuItem key={note.id}>
                   {renamingNoteId === note.id ? (
                     <Input
