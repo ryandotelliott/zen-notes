@@ -19,6 +19,9 @@ type NoteStore = {
   selectNote: (id: string | null) => void;
 };
 
+const sortNotesByUpdatedAtDesc = (notes: Note[]) =>
+  [...notes].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+
 export const useNotesStore = create<NoteStore>((set) => ({
   notes: [
     {
@@ -30,11 +33,18 @@ export const useNotesStore = create<NoteStore>((set) => ({
     },
   ],
   selectedNoteId: '1',
-  addNote: (note) => set((state) => ({ notes: [note, ...state.notes], selectedNoteId: note.id })),
-  updateNote: (id, updates) =>
+  addNote: (note) =>
     set((state) => ({
-      notes: state.notes.map((note) => (note.id === id ? { ...note, ...updates, updatedAt: new Date() } : note)),
+      notes: sortNotesByUpdatedAtDesc([note, ...state.notes]),
+      selectedNoteId: note.id,
     })),
+  updateNote: (id, updates) =>
+    set((state) => {
+      const updatedNotes = state.notes.map((note) =>
+        note.id === id ? { ...note, ...updates, updatedAt: new Date() } : note,
+      );
+      return { notes: sortNotesByUpdatedAtDesc(updatedNotes) };
+    }),
   deleteNote: (id) =>
     set((state) => ({
       notes: state.notes.filter((n) => n.id !== id),
