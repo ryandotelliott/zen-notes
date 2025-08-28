@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useNotesStore } from '@/stores/notes-store';
 import React, { useEffect, useRef } from 'react';
 
 type Props = {
@@ -11,7 +12,7 @@ function isVisiblyEmpty(el: HTMLElement) {
   return text.length === 0;
 }
 
-export default function EditorTitle({ initialTitle }: Props) {
+export default function EditorTitle() {
   const titleRef = useRef<HTMLHeadingElement | null>(null);
 
   // initialize and keep data-empty in sync for title placeholder
