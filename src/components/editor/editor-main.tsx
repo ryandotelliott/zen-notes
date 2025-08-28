@@ -7,16 +7,15 @@ import Highlight from '@tiptap/extension-highlight';
 import { Placeholder } from '@tiptap/extensions';
 import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import EditorToolbar from './EditorToolbar';
-import EditorTitle from './EditorTitle';
+import EditorToolbar from './editor-toolbar';
+import EditorTitle from './editor-title';
 
 type EditorBodyProps = {
   initialContent?: string;
-  initialTitle?: string;
   className?: string;
 };
 
-export default function EditorBody({ initialContent, initialTitle, className }: EditorBodyProps) {
+export default function EditorMain({ initialContent, className }: EditorBodyProps) {
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [StarterKit, Underline, Highlight, Placeholder.configure({ placeholder: 'Write something...' })],
@@ -37,7 +36,14 @@ export default function EditorBody({ initialContent, initialTitle, className }: 
   return (
     <div className={cn('grid h-full min-h-0 grid-cols-[auto_1fr] grid-rows-[auto_1fr] gap-x-4 gap-y-2', className)}>
       <header className="col-start-2 row-start-1">
-        <EditorTitle initialTitle={initialTitle} />
+        <EditorTitle
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              editor?.chain().focus();
+            }
+          }}
+        />
       </header>
 
       <aside className="col-start-1 row-start-2">

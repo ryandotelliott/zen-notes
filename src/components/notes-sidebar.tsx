@@ -39,7 +39,7 @@ export default function NotesSidebar() {
 
   const handleAdd = () => {
     const id = crypto.randomUUID();
-    addNote({ id, title: 'Untitled', content: '', updatedAt: new Date(), createdAt: new Date() });
+    addNote({ id, title: '', content: '', updatedAt: new Date(), createdAt: new Date() });
   };
 
   useEffect(() => {
