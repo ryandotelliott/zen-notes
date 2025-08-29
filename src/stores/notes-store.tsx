@@ -1,3 +1,4 @@
+import { Editor } from '@tiptap/react';
 import { create } from 'zustand';
 
 export type Note = {
@@ -13,6 +14,10 @@ export type NoteUpdate = Partial<Omit<Note, 'id' | 'createdAt' | 'updatedAt'>>;
 type NoteStore = {
   notes: Note[];
   selectedNoteId: string | null;
+
+  getCurrentEditorContent: (() => string) | undefined;
+  setEditorContentGetter: (fn: (() => string) | undefined) => void;
+
   addNote: (note: Note) => void;
   updateNote: (id: string, updates: NoteUpdate) => void;
   deleteNote: (id: string) => void;
@@ -33,6 +38,10 @@ export const useNotesStore = create<NoteStore>((set) => ({
     },
   ],
   selectedNoteId: '1',
+
+  getCurrentEditorContent: undefined,
+  setEditorContentGetter: (fn) => set({ getCurrentEditorContent: fn }),
+
   addNote: (note) =>
     set((state) => ({
       notes: sortNotesByUpdatedAtDesc([note, ...state.notes]),
@@ -50,5 +59,17 @@ export const useNotesStore = create<NoteStore>((set) => ({
       notes: state.notes.filter((n) => n.id !== id),
       selectedNoteId: state.selectedNoteId === id ? null : state.selectedNoteId,
     })),
-  selectNote: (id) => set(() => ({ selectedNoteId: id })),
+  selectNote: (id) =>
+    set((state) => {
+      const prevId = state.selectedNoteId;
+      if (prevId) {
+        const note = state.notes.find((n) => n.id === id);
+        const currentContent = state.getCurrentEditorContent?.();
+        if (note && (currentContent !== null || currentContent !== undefined)) {
+          state.updateNote(prevId, { content: currentContent });
+        }
+      }
+
+      return { selectedNoteId: id };
+    }),
 }));
