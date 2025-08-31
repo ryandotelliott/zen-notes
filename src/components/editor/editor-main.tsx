@@ -19,15 +19,21 @@ export default function EditorMain({ className }: EditorBodyProps) {
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId);
   const updateNote = useNotesStore((s) => s.updateNote);
   const setEditorContentGetter = useNotesStore((s) => s.setEditorContentGetter);
+  const hasUnsavedChanges = useNotesStore((s) => s.hasUnsavedChanges);
+  const setHasUnsavedChanges = useNotesStore((s) => s.setHasUnsavedChanges);
 
-  const originalContentRef = useRef<string | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const DEBOUNCE_MS = 500;
 
   // Schedule a debounced save
   const scheduleSave = useCallback(
     (content: string) => {
-      if (!selectedNoteId) return;
+      if (!selectedNoteId) {
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+        return;
+      }
 
       // Clear any pending save
       if (saveTimeoutRef.current) {
@@ -35,13 +41,13 @@ export default function EditorMain({ className }: EditorBodyProps) {
       }
 
       saveTimeoutRef.current = setTimeout(() => {
-        if (content !== originalContentRef.current) {
+        if (hasUnsavedChanges) {
           updateNote(selectedNoteId, { content });
-          originalContentRef.current = content;
+          setHasUnsavedChanges(false);
         }
       }, DEBOUNCE_MS);
     },
-    [selectedNoteId, updateNote],
+    [selectedNoteId, updateNote, hasUnsavedChanges, setHasUnsavedChanges],
   );
 
   const editor = useEditor({
@@ -55,17 +61,18 @@ export default function EditorMain({ className }: EditorBodyProps) {
     },
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
-      const changed = content !== originalContentRef.current;
 
-      if (changed) {
-        scheduleSave(content);
-      } else if (saveTimeoutRef.current) {
+      setHasUnsavedChanges(true);
+      scheduleSave(content);
+
+      if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
       }
     },
   });
 
+  // Define the getter so we can get the content from the store
   useEffect(() => {
     setEditorContentGetter(() => editor?.getHTML() ?? '');
 
@@ -88,12 +95,10 @@ export default function EditorMain({ className }: EditorBodyProps) {
       const state = useNotesStore.getState();
       const note = state.notes.find((n) => n.id === selectedNoteId);
       const content = note?.content ?? '';
-      originalContentRef.current = content;
-      editor.commands.setContent(content);
+      editor.commands.setContent(content, { emitUpdate: false });
     }
   }, [editor, selectedNoteId]);
 
-  // Cleanup on unmount only to prevent unnecessarily re-creating the editor
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {
