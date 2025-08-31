@@ -24,7 +24,8 @@ export default function EditorMain({ className }: EditorBodyProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const titleWrapperRef = useRef<HTMLDivElement | null>(null);
   const spacerRef = useRef<HTMLDivElement | null>(null);
-  const rafIdRef = useRef<number | null>(null);
+
+  const titleHeightRef = useRef(0);
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const DEBOUNCE_MS = 500;
@@ -116,47 +117,36 @@ export default function EditorMain({ className }: EditorBodyProps) {
     const scrollEl = scrollContainerRef.current;
     const titleEl = titleWrapperRef.current;
     const spacerEl = spacerRef.current;
-
     if (!scrollEl || !titleEl || !spacerEl) return;
 
-    const updateSpacer = () => {
-      rafIdRef.current = null;
-      const scrollRect = scrollEl.getBoundingClientRect();
-      const titleRect = titleEl.getBoundingClientRect();
+    const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
-      // Compute how much of the title is currently visible within the scroll container
-      const visibleTop = Math.max(titleRect.top, scrollRect.top);
-      const visibleBottom = Math.min(titleRect.bottom, scrollRect.bottom);
-      const visible = Math.max(0, visibleBottom - visibleTop);
+    // cache title's top offset inside the scroll container
+    const titleTop = titleEl.offsetTop;
 
-      // Clamp to the measured title height to avoid fractional drift
-      const clamped = Math.min(visible, titleRect.height);
-      spacerEl.style.height = `${clamped}px`;
+    const measure = () => {
+      const h = titleEl.offsetHeight;
+      titleHeightRef.current = h;
+      const visible = clamp(titleTop + h - scrollEl.scrollTop, 0, h);
+      spacerEl.style.height = `${visible}px`;
     };
 
     const onScroll = () => {
-      if (rafIdRef.current == null) {
-        rafIdRef.current = requestAnimationFrame(updateSpacer);
-      }
+      const h = titleHeightRef.current;
+      const visible = clamp(titleTop + h - scrollEl.scrollTop, 0, h);
+      spacerEl.style.height = `${visible}px`;
     };
 
-    // Also react when the title height changes
-    const onResize = () => {
-      if (rafIdRef.current == null) {
-        rafIdRef.current = requestAnimationFrame(updateSpacer);
-      }
-    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(titleEl);
+
+    measure();
 
     scrollEl.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onResize);
-
-    // Initial sync
-    updateSpacer();
 
     return () => {
       scrollEl.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onResize);
-      if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
+      ro.disconnect();
     };
   }, []);
 
