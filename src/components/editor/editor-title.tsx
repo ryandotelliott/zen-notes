@@ -4,12 +4,6 @@ import { cn } from '@/lib/utils';
 import { useNotesStore } from '@/stores/notes-store';
 import React, { useEffect, useRef, useCallback } from 'react';
 
-function isVisiblyEmpty(el: HTMLElement) {
-  // textContent without whitespace; ignore lone <br> that contenteditable injects
-  const text = (el.textContent || '').replace(/\u200B/g, '').trim(); // strip zero-width too
-  return text.length === 0;
-}
-
 function cleanText(t: string) {
   return t.replace(/\u200B/g, '').trim();
 }
@@ -92,7 +86,7 @@ export default function EditorTitle({
     }
   }, [selectedNoteId]);
 
-  // Cleanup autosave on unmount / when switching notes
+  // Clear autosave on unmount and when switching notes
   useEffect(() => cancelPendingSave(), [selectedNoteId]);
 
   return (
