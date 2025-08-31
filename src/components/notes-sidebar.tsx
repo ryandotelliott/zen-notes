@@ -37,11 +37,6 @@ export default function NotesSidebar() {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const renameNoteRef = useRef<HTMLInputElement>(null);
 
-  const handleAdd = () => {
-    const id = crypto.randomUUID();
-    addNote({ id, title: 'Untitled', content: '', updatedAt: new Date(), createdAt: new Date() });
-  };
-
   useEffect(() => {
     if (renameNoteRef.current && renamingNoteId) {
       renameNoteRef.current.focus();
@@ -59,7 +54,7 @@ export default function NotesSidebar() {
   };
 
   return (
-    <Sidebar side="left" variant="floating" collapsible="offcanvas" className="">
+    <Sidebar side="left" variant="floating" collapsible="offcanvas">
       <SidebarHeader>
         <SidebarInput
           placeholder="Search notes..."
@@ -71,7 +66,7 @@ export default function NotesSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Notes</SidebarGroupLabel>
-          <SidebarGroupAction onClick={handleAdd}>
+          <SidebarGroupAction onClick={() => addNote()}>
             <Plus />
           </SidebarGroupAction>
           <SidebarGroupContent>
