@@ -1,11 +1,17 @@
+'use client';
+
 import { cn } from '@/lib/utils';
 import { useNotesStore } from '@/stores/notes-store';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 
 function isVisiblyEmpty(el: HTMLElement) {
   // textContent without whitespace; ignore lone <br> that contenteditable injects
   const text = (el.textContent || '').replace(/\u200B/g, '').trim(); // strip zero-width too
   return text.length === 0;
+}
+
+function cleanText(t: string) {
+  return t.replace(/\u200B/g, '').trim();
 }
 
 export default function EditorTitle({
@@ -14,43 +20,80 @@ export default function EditorTitle({
   onKeyDown?: (e: React.KeyboardEvent<HTMLHeadingElement>) => void;
 }) {
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId);
-  const selectedNote = useNotesStore((s) => s.notes.find((note) => note.id === selectedNoteId));
   const updateNote = useNotesStore((s) => s.updateNote);
-  const titleRef = useRef<HTMLHeadingElement | null>(null);
+  const setHasUnsavedChanges = useNotesStore((s) => s.setHasUnsavedChanges);
+  const setEditorTitleGetter = useNotesStore((s) => s.setEditorTitleGetter);
 
-  // initialize and keep data-empty in sync for title placeholder
+  const titleRef = useRef<HTMLHeadingElement | null>(null);
+  const latestTitleRef = useRef<string>('');
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const DEBOUNCE_MS = 500;
+
+  const cancelPendingSave = () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+  };
+
+  // Register a getter so persistPendingEdits can pull the latest title on note change
+  useEffect(() => {
+    setEditorTitleGetter(() => cleanText(titleRef.current?.textContent || ''));
+
+    return () => setEditorTitleGetter(undefined);
+  }, [setEditorTitleGetter]);
+
+  // Debounced save that reads fresh state + latest title
+  const scheduleSave = useCallback(() => {
+    cancelPendingSave();
+
+    saveTimeoutRef.current = setTimeout(() => {
+      const { hasUnsavedChanges } = useNotesStore.getState();
+      if (!selectedNoteId) return;
+
+      if (hasUnsavedChanges) {
+        const title = latestTitleRef.current;
+        updateNote(selectedNoteId, { title });
+        setHasUnsavedChanges(false);
+      }
+    }, DEBOUNCE_MS);
+  }, [selectedNoteId, updateNote, setHasUnsavedChanges]);
+
   useEffect(() => {
     const el = titleRef.current;
     if (!el) return;
 
-    const update = () => {
-      if (el.innerHTML === '<br>' || el.innerHTML === '<div><br></div>') {
-        el.innerHTML = '';
-      }
-      el.dataset.empty = String(isVisiblyEmpty(el)); // set data-empty
+    const onInput = () => {
+      if (el.innerHTML === '<br>' || el.innerHTML === '<div><br></div>') el.innerHTML = '';
+      el.dataset.empty = String(cleanText(el.textContent || '') === '');
+
+      latestTitleRef.current = cleanText(el.textContent || '');
+      setHasUnsavedChanges(true);
+      scheduleSave();
     };
 
-    update();
+    el.addEventListener('input', onInput);
+    return () => el.removeEventListener('input', onInput);
+  }, [scheduleSave, setHasUnsavedChanges]);
 
-    el.addEventListener('input', update);
-    return () => {
-      el.removeEventListener('input', update);
-    };
-  }, []);
-
-  // Sync title from store to component
+  // Sync title from store when the selected note changes
   useEffect(() => {
-    if (titleRef.current && selectedNote?.title) {
-      titleRef.current.textContent = selectedNote.title;
-      titleRef.current.dataset.empty = String(!selectedNote.title.trim());
-    }
-  }, [selectedNote?.title]);
+    const state = useNotesStore.getState();
+    const selectedNote = state.notes.find((n) => n.id === selectedNoteId);
+    const newText = cleanText(selectedNote?.title ?? '');
 
-  const handleTitleChange = (newTitle: string) => {
-    if (selectedNoteId) {
-      updateNote(selectedNoteId, { title: newTitle });
+    if (titleRef.current) {
+      const current = cleanText(titleRef.current.textContent || '');
+      if (current !== newText) {
+        titleRef.current.textContent = newText;
+      }
+      titleRef.current.dataset.empty = String(newText.length === 0);
+      latestTitleRef.current = newText; // keep ref in sync
     }
-  };
+  }, [selectedNoteId]);
+
+  // Cleanup autosave on unmount / when switching notes
+  useEffect(() => cancelPendingSave(), [selectedNoteId]);
 
   return (
     <h1
@@ -66,10 +109,16 @@ export default function EditorTitle({
       aria-label="Title"
       data-placeholder="Untitled"
       onBlur={(e) => {
-        const text = e.currentTarget.textContent?.trim() || '';
+        const text = cleanText(e.currentTarget.textContent || '');
         e.currentTarget.textContent = text;
         e.currentTarget.dataset.empty = String(text.length === 0);
-        handleTitleChange(text); // Save to store
+        latestTitleRef.current = text;
+
+        const { hasUnsavedChanges } = useNotesStore.getState();
+        if (selectedNoteId && hasUnsavedChanges) {
+          updateNote(selectedNoteId, { title: text });
+          setHasUnsavedChanges(false);
+        }
       }}
       onKeyDown={onKeyDown}
     />

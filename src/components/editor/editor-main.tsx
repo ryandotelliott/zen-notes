@@ -2,7 +2,6 @@
 
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
 import Highlight from '@tiptap/extension-highlight';
 import { Placeholder } from '@tiptap/extensions';
 import { useEffect, useCallback, useRef } from 'react';
@@ -18,8 +17,8 @@ type EditorBodyProps = {
 export default function EditorMain({ className }: EditorBodyProps) {
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId);
   const updateNote = useNotesStore((s) => s.updateNote);
+
   const setEditorContentGetter = useNotesStore((s) => s.setEditorContentGetter);
-  const hasUnsavedChanges = useNotesStore((s) => s.hasUnsavedChanges);
   const setHasUnsavedChanges = useNotesStore((s) => s.setHasUnsavedChanges);
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -41,18 +40,21 @@ export default function EditorMain({ className }: EditorBodyProps) {
       }
 
       saveTimeoutRef.current = setTimeout(() => {
+        // Fetch the latest state to ensure we're not using stale data
+        const { hasUnsavedChanges } = useNotesStore.getState();
+
         if (hasUnsavedChanges) {
           updateNote(selectedNoteId, { content });
           setHasUnsavedChanges(false);
         }
       }, DEBOUNCE_MS);
     },
-    [selectedNoteId, updateNote, hasUnsavedChanges, setHasUnsavedChanges],
+    [selectedNoteId, updateNote, setHasUnsavedChanges],
   );
 
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: [StarterKit, Underline, Highlight, Placeholder.configure({ placeholder: 'Write something...' })],
+    extensions: [StarterKit, Highlight, Placeholder.configure({ placeholder: 'Write something...' })],
     content: '',
     editorProps: {
       attributes: {
@@ -64,11 +66,6 @@ export default function EditorMain({ className }: EditorBodyProps) {
 
       setHasUnsavedChanges(true);
       scheduleSave(content);
-
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-        saveTimeoutRef.current = null;
-      }
     },
   });
 

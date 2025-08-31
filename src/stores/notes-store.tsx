@@ -17,6 +17,9 @@ type NoteStore = {
   hasUnsavedChanges: boolean;
   setHasUnsavedChanges: (value: boolean) => void;
 
+  getCurrentEditorTitle: (() => string) | undefined;
+  setEditorTitleGetter: (fn: (() => string) | undefined) => void;
+
   getCurrentEditorContent: (() => string) | undefined;
   setEditorContentGetter: (fn: (() => string) | undefined) => void;
 
@@ -34,19 +37,20 @@ const sortByUpdatedAt = (notes: Note[], dir: 'asc' | 'desc' = 'desc') =>
 export const useNotesStore = create<NoteStore>((set) => {
   const persistPendingEdits = (state: NoteStore): Pick<NoteStore, 'notes' | 'hasUnsavedChanges'> => {
     const content = state.getCurrentEditorContent?.();
-
-    console.log('Has unsaved changes', state.hasUnsavedChanges);
+    const title = state.getCurrentEditorTitle?.();
 
     // Return the current state if there's no updates, so that we can still spread the state
-    if (!state.hasUnsavedChanges || !state.selectedNoteId || content == null)
+    if (!state.hasUnsavedChanges || !state.selectedNoteId)
       return {
         notes: state.notes,
         hasUnsavedChanges: state.hasUnsavedChanges,
       };
 
-    const updatedNotes = state.notes.map((n) =>
-      n.id === state.selectedNoteId ? { ...n, content, updatedAt: new Date() } : n,
-    );
+    const updates: Partial<Note> = { updatedAt: new Date() };
+    if (content != null) updates.content = content;
+    if (title != null) updates.title = title;
+
+    const updatedNotes = state.notes.map((n) => (n.id === state.selectedNoteId ? { ...n, ...updates } : n));
 
     return { notes: sortByUpdatedAt(updatedNotes), hasUnsavedChanges: false };
   };
@@ -65,6 +69,9 @@ export const useNotesStore = create<NoteStore>((set) => {
 
     hasUnsavedChanges: false,
     setHasUnsavedChanges: (value) => set({ hasUnsavedChanges: value }),
+
+    getCurrentEditorTitle: undefined,
+    setEditorTitleGetter: (fn) => set({ getCurrentEditorTitle: fn }),
 
     getCurrentEditorContent: undefined,
     setEditorContentGetter: (fn) => set({ getCurrentEditorContent: fn }),
