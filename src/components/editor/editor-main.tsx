@@ -21,6 +21,11 @@ export default function EditorMain({ className }: EditorBodyProps) {
   const setEditorContentGetter = useNotesStore((s) => s.setEditorContentGetter);
   const setHasUnsavedChanges = useNotesStore((s) => s.setHasUnsavedChanges);
 
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const titleWrapperRef = useRef<HTMLDivElement | null>(null);
+  const spacerRef = useRef<HTMLDivElement | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const DEBOUNCE_MS = 500;
 
@@ -58,7 +63,7 @@ export default function EditorMain({ className }: EditorBodyProps) {
     content: '',
     editorProps: {
       attributes: {
-        class: 'max-w-none focus:outline-none h-full w-full overflow-auto',
+        class: 'max-w-none focus:outline-none h-full w-full',
       },
     },
     onUpdate: ({ editor }) => {
@@ -106,26 +111,82 @@ export default function EditorMain({ className }: EditorBodyProps) {
     };
   }, [editor]);
 
+  // Auto-size the spacer to match the title height, so the toolbar always lines up with the editor.
+  useEffect(() => {
+    const scrollEl = scrollContainerRef.current;
+    const titleEl = titleWrapperRef.current;
+    const spacerEl = spacerRef.current;
+
+    if (!scrollEl || !titleEl || !spacerEl) return;
+
+    const updateSpacer = () => {
+      rafIdRef.current = null;
+      const scrollRect = scrollEl.getBoundingClientRect();
+      const titleRect = titleEl.getBoundingClientRect();
+
+      // Compute how much of the title is currently visible within the scroll container
+      const visibleTop = Math.max(titleRect.top, scrollRect.top);
+      const visibleBottom = Math.min(titleRect.bottom, scrollRect.bottom);
+      const visible = Math.max(0, visibleBottom - visibleTop);
+
+      // Clamp to the measured title height to avoid fractional drift
+      const clamped = Math.min(visible, titleRect.height);
+      spacerEl.style.height = `${clamped}px`;
+    };
+
+    const onScroll = () => {
+      if (rafIdRef.current == null) {
+        rafIdRef.current = requestAnimationFrame(updateSpacer);
+      }
+    };
+
+    // Also react when the title height changes
+    const onResize = () => {
+      if (rafIdRef.current == null) {
+        rafIdRef.current = requestAnimationFrame(updateSpacer);
+      }
+    };
+
+    scrollEl.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+
+    // Initial sync
+    updateSpacer();
+
+    return () => {
+      scrollEl.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+      if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
+    };
+  }, []);
+
   return (
-    <div className={cn('grid h-full min-h-0 grid-cols-[auto_1fr] grid-rows-[auto_1fr] gap-x-4 gap-y-2', className)}>
-      <aside className="col-start-1 row-start-2">
-        <EditorToolbar editor={editor} className="rounded p-2" />
+    <div className={cn('grid h-full min-h-0 grid-cols-[auto_1fr] gap-x-4', className)}>
+      <aside className="col-start-1 flex flex-col">
+        <div ref={spacerRef} className="shrink-0" aria-hidden />
+        <EditorToolbar editor={editor} className="flex-1 rounded px-2" />
       </aside>
 
-      <header className="col-start-2 row-start-1">
-        <EditorTitle
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              editor?.chain().focus();
-            }
-          }}
-        />
-      </header>
+      <section className="col-start-2 flex min-h-0 flex-col">
+        <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
+          <div className="flex h-full min-h-0 flex-col">
+            <div ref={titleWrapperRef} id="title" className="shrink-0 py-2">
+              <EditorTitle
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    editor?.chain().focus();
+                  }
+                }}
+              />
+            </div>
 
-      <main className="col-start-2 row-start-2 min-h-0 overflow-hidden">
-        <EditorContent editor={editor} className="h-full min-h-0 overflow-auto" />
-      </main>
+            <div className="min-h-0 flex-1">
+              <EditorContent editor={editor} className="h-full max-w-none" />
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

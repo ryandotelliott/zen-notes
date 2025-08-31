@@ -11,7 +11,7 @@ function cleanText(t: string) {
 export default function EditorTitle({
   onKeyDown,
 }: {
-  onKeyDown?: (e: React.KeyboardEvent<HTMLHeadingElement>) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLHeadingElement>) => void;
 }) {
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId);
   const updateNote = useNotesStore((s) => s.updateNote);
@@ -20,6 +20,7 @@ export default function EditorTitle({
 
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   const latestTitleRef = useRef<string>('');
+
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const DEBOUNCE_MS = 500;
 
