@@ -1,4 +1,4 @@
-import EditorMain from '@/components/editor/editor-main';
+import EditorMain from '@/features/notes/components/editor/editor-main';
 
 export default function Home() {
   return (
