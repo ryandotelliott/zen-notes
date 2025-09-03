@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import HeaderBar from '@/components/header-bar';
-import { Providers } from '@/providers/providers';
+import { Providers } from '@/shared/providers/providers';
 import NotesSidebar from '@/components/notes-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
@@ -36,7 +36,7 @@ export default function RootLayout({
             <NotesSidebar />
             <SidebarInset>
               <HeaderBar />
-              <main className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</main>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
             </SidebarInset>
           </SidebarProvider>
         </Providers>
