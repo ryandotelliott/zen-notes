@@ -1,62 +1,36 @@
 'use client';
 
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
 import { Placeholder } from '@tiptap/extensions';
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { cn } from '@/shared/lib/utils';
 import EditorToolbar from './editor-toolbar';
 import EditorTitle from './editor-title';
-import { useNotesStore } from '@/features/notes/state/use-notes-store';
+import { useNotesStore } from '@/features/notes/state/notes.store';
+import { useDebouncedCallback } from '@/shared/hooks/use-debounced-callback';
 
 type EditorBodyProps = {
   className?: string;
 };
 
+const AUTOSAVE_DEBOUNCE_MS = 2000;
 export default function EditorMain({ className }: EditorBodyProps) {
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId);
-  const updateNote = useNotesStore((s) => s.updateNote);
-
-  const setEditorContentGetter = useNotesStore((s) => s.setEditorContentGetter);
-  const setHasUnsavedChanges = useNotesStore((s) => s.setHasUnsavedChanges);
+  const updateNoteContent = useNotesStore((s) => s.updateNoteContent);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const titleWrapperRef = useRef<HTMLDivElement | null>(null);
   const spacerRef = useRef<HTMLDivElement | null>(null);
-
   const titleHeightRef = useRef(0);
 
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const DEBOUNCE_MS = 500;
-
-  // Schedule a debounced save
-  const scheduleSave = useCallback(
-    (content: string) => {
-      if (!selectedNoteId) {
-        if (saveTimeoutRef.current) {
-          clearTimeout(saveTimeoutRef.current);
-        }
-        return;
-      }
-
-      // Clear any pending save
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-
-      saveTimeoutRef.current = setTimeout(() => {
-        // Fetch the latest state to ensure we're not using stale data
-        const { hasUnsavedChanges } = useNotesStore.getState();
-
-        if (hasUnsavedChanges) {
-          updateNote(selectedNoteId, { content });
-          setHasUnsavedChanges(false);
-        }
-      }, DEBOUNCE_MS);
-    },
-    [selectedNoteId, updateNote, setHasUnsavedChanges],
-  );
+  const debouncedUpdate = useDebouncedCallback((content_json: JSONContent, content_text: string) => {
+    console.log('debouncedUpdate', selectedNoteId, content_json, content_text);
+    if (selectedNoteId) {
+      updateNoteContent(selectedNoteId, content_json, content_text);
+    }
+  }, AUTOSAVE_DEBOUNCE_MS);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -68,46 +42,31 @@ export default function EditorMain({ className }: EditorBodyProps) {
       },
     },
     onUpdate: ({ editor }) => {
-      const content = editor.getHTML();
-
-      setHasUnsavedChanges(true);
-      scheduleSave(content);
+      const content_json = editor.getJSON();
+      const content_text = editor.getText();
+      debouncedUpdate(content_json, content_text);
     },
   });
-
-  // Define the getter so we can get the content from the store
-  useEffect(() => {
-    setEditorContentGetter(() => editor?.getHTML() ?? '');
-
-    return () => {
-      setEditorContentGetter(undefined);
-    };
-  }, [editor, setEditorContentGetter]);
 
   // Update editor content only when the selected note ID changes
   useEffect(() => {
     if (!editor) return;
 
-    // Clear any pending saves when switching notes
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = null;
-    }
-
     if (selectedNoteId) {
       const state = useNotesStore.getState();
       const note = state.notes.find((n) => n.id === selectedNoteId);
-      const content = note?.content ?? '';
+      const content = note?.content_json && Object.keys(note?.content_json).length > 0 ? note?.content_json : '';
       editor.commands.setContent(content, { emitUpdate: false });
     }
-  }, [editor, selectedNoteId]);
+
+    return () => {
+      if (!selectedNoteId) return;
+      updateNoteContent(selectedNoteId, editor.getJSON(), editor.getText());
+    };
+  }, [editor, selectedNoteId, updateNoteContent]);
 
   useEffect(() => {
     return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-        saveTimeoutRef.current = null;
-      }
       editor?.destroy();
     };
   }, [editor]);
