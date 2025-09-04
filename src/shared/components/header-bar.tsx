@@ -5,7 +5,7 @@ import { MessageCircle } from 'lucide-react';
 import React from 'react';
 import { Button } from './ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { useNotesStore } from '@/features/notes/state/use-notes-store';
+import { useNotesStore } from '@/features/notes/state/notes.store';
 
 type Props = {
   className?: string;

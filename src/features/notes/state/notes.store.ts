@@ -78,7 +78,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       return;
     }
 
-    set({ selectedNoteId: id, error: null });
+    set({ selectedNoteId: newNote.id, error: null });
   },
 
   updateNoteContent: async (id: string, content: object) => {

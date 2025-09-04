@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useNotesStore } from '@/features/notes/state/use-notes-store';
+import { useNotesStore } from '@/features/notes/state/notes.store';
 
 export function useNoteSearch(searchQuery: string) {
   const notes = useNotesStore((state) => state.notes);

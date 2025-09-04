@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Sidebar,
   SidebarContent,
@@ -13,19 +13,23 @@ import {
   SidebarMenu,
 } from '@/components/ui/sidebar';
 import { Plus } from 'lucide-react';
-import { useNotesStore } from '@/features/notes/state/use-notes-store';
-import { useNoteSearch } from '@/shared/hooks/use-note-search';
-import { useNotesStore as useNotesStoreNew } from '@/features/notes/state/notes.store';
+import { useNoteSearch } from '@/features/notes/hooks/use-note-search';
+import { useNotesStore } from '@/features/notes/state/notes.store';
 import NoteSidebarItem from '@/features/notes/components/sidebar/note-sidebar-item';
 
 export default function NotesSidebar() {
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId);
-  const addNote = useNotesStoreNew((s) => s.addNote);
-  const notes = useNotesStoreNew((s) => s.notes);
+  const fetchNotes = useNotesStore((s) => s.fetchNotes);
+  const addNote = useNotesStore((s) => s.addNote);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
   const filteredNotes = useNoteSearch(searchQuery);
+
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes]);
 
   return (
     <Sidebar side="left" variant="floating" collapsible="offcanvas">
@@ -45,7 +49,7 @@ export default function NotesSidebar() {
           </SidebarGroupAction>
           <SidebarGroupContent>
             <SidebarMenu>
-              {notes.map((note) => (
+              {filteredNotes.map((note) => (
                 <NoteSidebarItem
                   key={note.id}
                   id={note.id}
