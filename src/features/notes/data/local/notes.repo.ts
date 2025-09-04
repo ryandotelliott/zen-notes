@@ -2,11 +2,15 @@
 
 import { db, type Note } from './notes.db';
 
-export type CreateNoteDTO = Pick<Note, 'title' | 'content'>;
+export type CreateNoteDTO = Pick<Note, 'title' | 'content_json' | 'content_text'>;
 export type UpdateNoteDTO = Partial<Omit<Note, 'id' | 'createdAt'>>;
 
 async function getAll(): Promise<Note[]> {
-  return db.notes.orderBy('createdAt').reverse().toArray();
+  return await db.notes.orderBy('createdAt').reverse().toArray();
+}
+
+async function get(id: string): Promise<Note | undefined> {
+  return await db.notes.get(id);
 }
 
 async function add(noteDto: CreateNoteDTO): Promise<Note> {
@@ -41,6 +45,7 @@ async function remove(id: string): Promise<void> {
 
 export const notesRepository = {
   getAll,
+  get,
   add,
   update,
   remove,

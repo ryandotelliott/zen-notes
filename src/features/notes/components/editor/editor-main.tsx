@@ -26,7 +26,6 @@ export default function EditorMain({ className }: EditorBodyProps) {
   const titleHeightRef = useRef(0);
 
   const debouncedUpdate = useDebouncedCallback((content_json: JSONContent, content_text: string) => {
-    console.log('debouncedUpdate', selectedNoteId, content_json, content_text);
     if (selectedNoteId) {
       updateNoteContent(selectedNoteId, content_json, content_text);
     }

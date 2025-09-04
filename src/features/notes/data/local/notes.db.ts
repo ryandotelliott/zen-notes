@@ -1,11 +1,13 @@
 'use client';
 
+import { JSONContent } from '@tiptap/react';
 import Dexie, { EntityTable } from 'dexie';
 
 interface Note {
   id: string;
   title: string;
-  content: string;
+  content_json: JSONContent;
+  content_text: string;
   createdAt: number;
   updatedAt: number;
 }

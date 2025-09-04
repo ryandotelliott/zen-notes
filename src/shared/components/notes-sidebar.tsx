@@ -44,7 +44,7 @@ export default function NotesSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Notes</SidebarGroupLabel>
-          <SidebarGroupAction onClick={() => addNote({ title: '', content: '' })}>
+          <SidebarGroupAction onClick={() => addNote({ title: '', content_json: {}, content_text: '' })}>
             <Plus />
           </SidebarGroupAction>
           <SidebarGroupContent>

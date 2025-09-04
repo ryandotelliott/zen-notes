@@ -1,8 +1,10 @@
 'use client';
 
+import { JSONContent } from '@tiptap/react';
 import { Note } from '../data/local/notes.db';
 import { CreateNoteDTO, notesRepository } from '../data/local/notes.repo';
 import { create } from 'zustand';
+import { hashJsonStable, hashStringSHA256 } from '@/shared/utils/hashing-utils';
 
 interface NotesState {
   notes: Note[];
@@ -12,7 +14,7 @@ interface NotesState {
   fetchNotes: () => Promise<void>;
   addNote: (noteDto: CreateNoteDTO) => Promise<void>;
   selectNote: (id: string) => void;
-  updateNoteContent: (id: string, content: object) => Promise<void>;
+  updateNoteContent: (id: string, content_json: JSONContent, content_text: string) => Promise<void>;
   updateNoteTitle: (id: string, title: string) => Promise<void>;
   renameNote: (id: string, title: string) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
@@ -40,6 +42,8 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const optimisticNote: Note = {
       id: tempId,
       ...noteDto,
+      content_json: noteDto.content_json,
+      content_text: noteDto.content_text,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -55,6 +59,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       // On success, replace the temporary note with the real one
       set((state) => ({
         notes: state.notes.map((note) => (note.id === tempId ? savedNote : note)),
+        selectedNoteId: savedNote.id,
       }));
     } catch (err) {
       // On failure, roll back the state and show an error
@@ -81,7 +86,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     set({ selectedNoteId: newNote.id, error: null });
   },
 
-  updateNoteContent: async (id: string, content: object) => {
+  updateNoteContent: async (id: string, content_json: object, content_text: string) => {
     const originalNote = get().notes.find((note) => note.id === id);
     if (!originalNote) {
       console.error(`Note with id ${id} not found in the store.`);
@@ -90,21 +95,38 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       });
       return;
     }
-    const originalContent = originalNote.content;
+    const originalContent = originalNote.content_json;
+    const originalContentText = originalNote.content_text;
     const originalUpdatedAt = originalNote.updatedAt;
+
+    const [originalHash, nextHash] = await Promise.all([hashJsonStable(originalContent), hashJsonStable(content_json)]);
+
+    if (originalHash === nextHash) {
+      console.log("Content hasn't changed, skipping update.");
+      return;
+    }
 
     set((state) => ({
       notes: state.notes.map((note) =>
-        note.id === id ? { ...note, content: JSON.stringify(content), updatedAt: Date.now() } : note,
+        note.id === id
+          ? { ...note, content_json: content_json, content_text: content_text, updatedAt: Date.now() }
+          : note,
       ),
     }));
 
     try {
-      const updatedNote = await notesRepository.update(id, { content: JSON.stringify(content) });
+      const updatedNote = await notesRepository.update(id, { content_json: content_json, content_text: content_text });
 
       set((state) => ({
         notes: state.notes.map((note) =>
-          note.id === id ? { ...note, content: updatedNote.content, updatedAt: updatedNote.updatedAt } : note,
+          note.id === id
+            ? {
+                ...note,
+                content_json: updatedNote.content_json,
+                content_text: updatedNote.content_text,
+                updatedAt: updatedNote.updatedAt,
+              }
+            : note,
         ),
         error: null,
       }));
@@ -113,7 +135,14 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       set((state) => ({
         error: 'Could not save the note content. Please try again.',
         notes: state.notes.map((note) =>
-          note.id === id ? { ...note, content: originalContent, updatedAt: originalUpdatedAt } : note,
+          note.id === id
+            ? {
+                ...note,
+                content_json: originalContent,
+                content_text: originalContentText,
+                updatedAt: originalUpdatedAt,
+              }
+            : note,
         ),
       }));
     }
@@ -130,6 +159,16 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }
     const originalTitle = originalNote.title;
     const originalUpdatedAt = originalNote.updatedAt;
+
+    const [originalTitleHash, nextTitleHash] = await Promise.all([
+      hashStringSHA256(originalTitle ?? ''),
+      hashStringSHA256(title ?? ''),
+    ]);
+
+    if (originalTitleHash === nextTitleHash) {
+      console.log("Title hasn't changed, skipping update.");
+      return;
+    }
 
     set((state) => ({
       notes: state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: Date.now() } : note)),
