@@ -12,6 +12,8 @@ interface NotesState {
   fetchNotes: () => Promise<void>;
   addNote: (noteDto: CreateNoteDTO) => Promise<void>;
   selectNote: (id: string) => void;
+  updateNoteContent: (id: string, content: object) => Promise<void>;
+  updateNoteTitle: (id: string, title: string) => Promise<void>;
   renameNote: (id: string, title: string) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
 }
@@ -77,6 +79,80 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }
 
     set({ selectedNoteId: id, error: null });
+  },
+
+  updateNoteContent: async (id: string, content: object) => {
+    const originalNote = get().notes.find((note) => note.id === id);
+    if (!originalNote) {
+      console.error(`Note with id ${id} not found in the store.`);
+      set({
+        error: 'Could not update the note content, because it was not found.',
+      });
+      return;
+    }
+    const originalContent = originalNote.content;
+    const originalUpdatedAt = originalNote.updatedAt;
+
+    set((state) => ({
+      notes: state.notes.map((note) =>
+        note.id === id ? { ...note, content: JSON.stringify(content), updatedAt: Date.now() } : note,
+      ),
+    }));
+
+    try {
+      const updatedNote = await notesRepository.update(id, { content: JSON.stringify(content) });
+
+      set((state) => ({
+        notes: state.notes.map((note) =>
+          note.id === id ? { ...note, content: updatedNote.content, updatedAt: updatedNote.updatedAt } : note,
+        ),
+        error: null,
+      }));
+    } catch (err) {
+      console.error('Failed to update note content in IndexedDB:', err);
+      set((state) => ({
+        error: 'Could not save the note content. Please try again.',
+        notes: state.notes.map((note) =>
+          note.id === id ? { ...note, content: originalContent, updatedAt: originalUpdatedAt } : note,
+        ),
+      }));
+    }
+  },
+
+  updateNoteTitle: async (id: string, title: string) => {
+    const originalNote = get().notes.find((note) => note.id === id);
+    if (!originalNote) {
+      console.error(`Note with id ${id} not found in the store.`);
+      set({
+        error: 'Could not update the note title, because it was not found.',
+      });
+      return;
+    }
+    const originalTitle = originalNote.title;
+    const originalUpdatedAt = originalNote.updatedAt;
+
+    set((state) => ({
+      notes: state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: Date.now() } : note)),
+    }));
+
+    try {
+      const updatedNote = await notesRepository.update(id, { title });
+
+      set((state) => ({
+        notes: state.notes.map((note) =>
+          note.id === id ? { ...note, title: updatedNote.title, updatedAt: updatedNote.updatedAt } : note,
+        ),
+        error: null,
+      }));
+    } catch (err) {
+      console.error('Failed to update note content in IndexedDB:', err);
+      set((state) => ({
+        error: 'Could not save the note title. Please try again.',
+        notes: state.notes.map((note) =>
+          note.id === id ? { ...note, title: originalTitle, updatedAt: originalUpdatedAt } : note,
+        ),
+      }));
+    }
   },
 
   renameNote: async (id: string, title: string) => {
