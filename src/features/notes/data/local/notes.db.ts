@@ -16,7 +16,7 @@ class NotesDB extends Dexie {
   constructor() {
     super('zen-notes');
     this.version(1).stores({
-      notes: 'id, title',
+      notes: 'id, title, createdAt, updatedAt',
     });
   }
 }
