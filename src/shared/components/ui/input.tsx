@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/shared/lib/ui-utils';
 
 const inputVariants = {
   small: 'h-8 px-2 py-1 text-sm',
