@@ -4,7 +4,7 @@ import React from 'react';
 import EditorMain from './editor-main';
 import { useNotesStore } from '@/features/notes/state/notes.store';
 import EditorEmpty from './editor-empty';
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/shared/lib/ui-utils';
 
 type Props = {
   className?: string;

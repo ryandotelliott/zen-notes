@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { Bold, Italic, Underline, Strikethrough, Code, Sparkles, Mic } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/shared/lib/ui-utils';
 import { useEffect, useReducer } from 'react';
 
 interface ToolbarItem {

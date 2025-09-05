@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/shared/components/ui/button';
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/shared/lib/ui-utils';
 import { useNotesStore } from '@/features/notes/state/notes.store';
 import React from 'react';
 

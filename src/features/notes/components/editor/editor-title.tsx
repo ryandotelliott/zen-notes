@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/shared/lib/ui-utils';
 import { useNotesStore } from '@/features/notes/state/notes.store';
 import { useDebouncedCallback } from '@/shared/hooks/use-debounced-callback';
 import React, { useEffect, useRef } from 'react';

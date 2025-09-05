@@ -7,7 +7,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Note } from '../../data/local/notes.db';
 import { DropdownMenu } from '@/shared/components/ui/dropdown-menu';
 import { Edit, MoreHorizontal, Trash2 } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/shared/lib/ui-utils';
 import { useNotesStore } from '../../state/notes.store';
 
 type NoteFields = Pick<Note, 'id' | 'title'>;

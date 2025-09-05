@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
 import { Placeholder } from '@tiptap/extensions';
 import { useEffect, useRef } from 'react';
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/shared/lib/ui-utils';
 import EditorToolbar from './editor-toolbar';
 import EditorTitle from './editor-title';
 import { useNotesStore } from '@/features/notes/state/notes.store';

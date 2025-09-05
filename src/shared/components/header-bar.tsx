@@ -1,4 +1,4 @@
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/shared/lib/ui-utils';
 import React from 'react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import NotesHeader from '@/features/notes/components/header/notes-header';
