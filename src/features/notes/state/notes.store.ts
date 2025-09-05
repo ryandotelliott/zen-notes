@@ -17,7 +17,6 @@ interface NotesState {
   selectNote: (id: string) => void;
   updateNoteContent: (id: string, content_json: JSONContent, content_text: string) => Promise<void>;
   updateNoteTitle: (id: string, title: string) => Promise<void>;
-  renameNote: (id: string, title: string) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
 }
 
@@ -200,51 +199,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         return {
           notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
           error: 'Could not save the note title. Please try again.',
-        };
-      });
-    }
-  },
-
-  renameNote: async (id: string, title: string) => {
-    const originalNote = get().notes.find((note) => note.id === id);
-    if (!originalNote) {
-      console.error(`Note with id ${id} not found in the store.`);
-      set({
-        error: 'Could not rename the note, because it was not found.',
-      });
-      return;
-    }
-    const originalTitle = originalNote.title;
-    const originalUpdatedAt = originalNote.updatedAt;
-
-    set((state) => {
-      const newNotes = state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: Date.now() } : note));
-      return {
-        notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
-      };
-    });
-
-    try {
-      const updatedNote = await notesRepository.update(id, { title });
-
-      set((state) => {
-        const newNotes = state.notes.map((note) =>
-          note.id === id ? { ...note, title: updatedNote.title, updatedAt: updatedNote.updatedAt } : note,
-        );
-        return {
-          notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
-          error: null,
-        };
-      });
-    } catch (err) {
-      console.error('Failed to rename note in IndexedDB:', err);
-      set((state) => {
-        const newNotes = state.notes.map((note) =>
-          note.id === id ? { ...note, title: originalTitle, updatedAt: originalUpdatedAt } : note,
-        );
-        return {
-          error: 'Could not rename the note. Please try again.',
-          notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
         };
       });
     }

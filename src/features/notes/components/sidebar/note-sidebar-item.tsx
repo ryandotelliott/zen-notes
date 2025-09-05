@@ -26,7 +26,7 @@ export default function NoteSidebarItem({ id, title, isEditing, setIsEditing, is
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const selectNote = useNotesStore((s) => s.selectNote);
-  const renameNote = useNotesStore((s) => s.renameNote);
+  const renameNote = useNotesStore((s) => s.updateNoteTitle);
   const deleteNote = useNotesStore((s) => s.deleteNote);
 
   const handleSelect = useCallback(() => {
