@@ -93,7 +93,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   updateNoteContent: async (id: string, content_json: object, content_text: string) => {
     const originalNote = get().notes.find((note) => note.id === id);
     if (!originalNote) {
-      console.error(`Note with id ${id} not found in the store.`);
       return;
     }
     const originalContent = originalNote.content_json;
@@ -154,7 +153,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   updateNoteTitle: async (id: string, title: string) => {
     const originalNote = get().notes.find((note) => note.id === id);
     if (!originalNote) {
-      console.error(`Note with id ${id} not found in the store.`);
       return;
     }
     const originalTitle = originalNote.title;
