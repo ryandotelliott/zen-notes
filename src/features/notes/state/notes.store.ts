@@ -5,6 +5,7 @@ import { Note } from '../data/local/notes.db';
 import { CreateNoteDTO, notesRepository } from '../data/local/notes.repo';
 import { create } from 'zustand';
 import { hashJsonStable, hashStringSHA256 } from '@/shared/utils/hashing-utils';
+import { sortArrayByKey } from '@/shared/utils/sorting-utils';
 
 interface NotesState {
   notes: Note[];
@@ -30,7 +31,9 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const notes = await notesRepository.getAll();
-      set({ notes, isLoading: false });
+      const noteToSelect = notes.length > 0 ? notes[0].id : null;
+
+      set({ notes, isLoading: false, selectedNoteId: noteToSelect });
     } catch (err) {
       console.error('Failed to fetch notes from IndexedDB:', err);
       set({ error: 'Failed to load notes.', isLoading: false });
@@ -56,11 +59,13 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     try {
       const savedNote = await notesRepository.add(noteDto);
 
-      // On success, replace the temporary note with the real one
-      set((state) => ({
-        notes: state.notes.map((note) => (note.id === tempId ? savedNote : note)),
-        selectedNoteId: savedNote.id,
-      }));
+      set((state) => {
+        const newNotes = state.notes.map((note) => (note.id === tempId ? savedNote : note));
+        return {
+          notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+          selectedNoteId: savedNote.id,
+        };
+      });
     } catch (err) {
       // On failure, roll back the state and show an error
       console.error('Failed to save note:', err);
@@ -90,9 +95,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const originalNote = get().notes.find((note) => note.id === id);
     if (!originalNote) {
       console.error(`Note with id ${id} not found in the store.`);
-      set({
-        error: 'Could not update the note content, because it was not found.',
-      });
       return;
     }
     const originalContent = originalNote.content_json;
@@ -106,35 +108,33 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       return;
     }
 
-    set((state) => ({
-      notes: state.notes.map((note) =>
+    set((state) => {
+      const newNotes = state.notes.map((note) =>
         note.id === id
           ? { ...note, content_json: content_json, content_text: content_text, updatedAt: Date.now() }
           : note,
-      ),
-    }));
+      );
+
+      return {
+        notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+      };
+    });
 
     try {
       const updatedNote = await notesRepository.update(id, { content_json: content_json, content_text: content_text });
 
-      set((state) => ({
-        notes: state.notes.map((note) =>
-          note.id === id
-            ? {
-                ...note,
-                content_json: updatedNote.content_json,
-                content_text: updatedNote.content_text,
-                updatedAt: updatedNote.updatedAt,
-              }
-            : note,
-        ),
-        error: null,
-      }));
+      set((state) => {
+        const newNotes = state.notes.map((note) => (note.id === id ? updatedNote : note));
+
+        return {
+          notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+          error: null,
+        };
+      });
     } catch (err) {
       console.error('Failed to update note content in IndexedDB:', err);
-      set((state) => ({
-        error: 'Could not save the note content. Please try again.',
-        notes: state.notes.map((note) =>
+      set((state) => {
+        const newNotes = state.notes.map((note) =>
           note.id === id
             ? {
                 ...note,
@@ -143,8 +143,12 @@ export const useNotesStore = create<NotesState>((set, get) => ({
                 updatedAt: originalUpdatedAt,
               }
             : note,
-        ),
-      }));
+        );
+        return {
+          error: 'Could not save the note content. Please try again.',
+          notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+        };
+      });
     }
   },
 
@@ -152,9 +156,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const originalNote = get().notes.find((note) => note.id === id);
     if (!originalNote) {
       console.error(`Note with id ${id} not found in the store.`);
-      set({
-        error: 'Could not update the note title, because it was not found.',
-      });
       return;
     }
     const originalTitle = originalNote.title;
@@ -170,27 +171,37 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       return;
     }
 
-    set((state) => ({
-      notes: state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: Date.now() } : note)),
-    }));
+    set((state) => {
+      const newNotes = state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: Date.now() } : note));
+      return {
+        notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+      };
+    });
 
     try {
       const updatedNote = await notesRepository.update(id, { title });
 
-      set((state) => ({
-        notes: state.notes.map((note) =>
+      set((state) => {
+        const newNotes = state.notes.map((note) =>
           note.id === id ? { ...note, title: updatedNote.title, updatedAt: updatedNote.updatedAt } : note,
-        ),
-        error: null,
-      }));
+        );
+        return {
+          notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+          error: null,
+        };
+      });
     } catch (err) {
-      console.error('Failed to update note content in IndexedDB:', err);
-      set((state) => ({
-        error: 'Could not save the note title. Please try again.',
-        notes: state.notes.map((note) =>
+      console.error('Failed to update note title in IndexedDB:', err);
+      set((state) => {
+        const newNotes = state.notes.map((note) =>
           note.id === id ? { ...note, title: originalTitle, updatedAt: originalUpdatedAt } : note,
-        ),
-      }));
+        );
+
+        return {
+          notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+          error: 'Could not save the note title. Please try again.',
+        };
+      });
     }
   },
 
@@ -206,33 +217,43 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const originalTitle = originalNote.title;
     const originalUpdatedAt = originalNote.updatedAt;
 
-    set((state) => ({
-      notes: state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: Date.now() } : note)),
-    }));
+    set((state) => {
+      const newNotes = state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: Date.now() } : note));
+      return {
+        notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+      };
+    });
 
     try {
       const updatedNote = await notesRepository.update(id, { title });
 
-      set((state) => ({
-        notes: state.notes.map((note) =>
+      set((state) => {
+        const newNotes = state.notes.map((note) =>
           note.id === id ? { ...note, title: updatedNote.title, updatedAt: updatedNote.updatedAt } : note,
-        ),
-        error: null,
-      }));
+        );
+        return {
+          notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+          error: null,
+        };
+      });
     } catch (err) {
       console.error('Failed to rename note in IndexedDB:', err);
-      set((state) => ({
-        error: 'Could not rename the note. Please try again.',
-        notes: state.notes.map((note) =>
+      set((state) => {
+        const newNotes = state.notes.map((note) =>
           note.id === id ? { ...note, title: originalTitle, updatedAt: originalUpdatedAt } : note,
-        ),
-      }));
+        );
+        return {
+          error: 'Could not rename the note. Please try again.',
+          notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+        };
+      });
     }
   },
 
   deleteNote: async (id: string) => {
     set((state) => ({
       notes: state.notes.filter((note) => note.id !== id),
+      selectedNoteId: state.selectedNoteId === id ? null : state.selectedNoteId,
       error: null,
     }));
 
