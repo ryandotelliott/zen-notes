@@ -14,7 +14,7 @@ export default function EditorEmpty({ className }: Props) {
 
   return (
     <div className={cn('flex h-full flex-col items-center justify-center gap-y-4', className)}>
-      <Button variant="outline" onClick={() => addNote({ title: '', content: '' })}>
+      <Button variant="outline" onClick={() => addNote({ title: '', content_json: {}, content_text: '' })}>
         Create Note
       </Button>
     </div>

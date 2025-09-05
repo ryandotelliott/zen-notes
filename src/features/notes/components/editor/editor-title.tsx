@@ -10,6 +10,7 @@ function cleanText(t: string) {
 }
 
 const DEBOUNCE_MS = 500;
+
 export default function EditorTitle({
   onKeyDown,
 }: {

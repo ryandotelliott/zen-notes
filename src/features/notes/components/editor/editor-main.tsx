@@ -16,6 +16,7 @@ type EditorBodyProps = {
 };
 
 const AUTOSAVE_DEBOUNCE_MS = 2000;
+
 export default function EditorMain({ className }: EditorBodyProps) {
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId);
   const updateNoteContent = useNotesStore((s) => s.updateNoteContent);
