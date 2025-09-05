@@ -12,6 +12,11 @@ type Props = {
 
 export default function EditorWrapper({ className }: Props) {
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId);
+  const isLoading = useNotesStore((s) => s.isLoading);
+
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <>
