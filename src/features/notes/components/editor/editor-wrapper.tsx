@@ -11,14 +11,14 @@ type Props = {
 };
 
 export default function EditorWrapper({ className }: Props) {
-  const notes = useNotesStore((s) => s.notes);
+  const selectedNoteId = useNotesStore((s) => s.selectedNoteId);
 
   return (
     <>
-      {notes.length === 0 ? (
-        <EditorEmpty className={className} />
-      ) : (
+      {selectedNoteId ? (
         <EditorMain className={cn('mx-auto min-h-0 w-full max-w-4xl flex-1 overflow-hidden', className)} />
+      ) : (
+        <EditorEmpty className={cn('mx-auto min-h-0 w-full max-w-4xl flex-1 overflow-hidden', className)} />
       )}
     </>
   );

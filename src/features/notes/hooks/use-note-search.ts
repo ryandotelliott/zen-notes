@@ -1,3 +1,5 @@
+'use client';
+
 import { useMemo } from 'react';
 import { useNotesStore } from '@/features/notes/state/notes.store';
 
