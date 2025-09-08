@@ -1,11 +1,11 @@
 'use client';
 
 import { JSONContent } from '@tiptap/react';
-import { Note } from '../data/local/notes.db';
-import { CreateNoteDTO, notesRepository } from '../data/local/notes.repo';
+import { Note } from '../data/notes.db';
+import { CreateNoteDTO, notesRepository } from '../data/notes.repo';
 import { create } from 'zustand';
-import { hashJsonStable, hashStringSHA256 } from '@/shared/utils/hashing-utils';
-import { sortArrayByKey } from '@/shared/utils/sorting-utils';
+import { hashJsonStable, hashStringSHA256 } from '@/shared/lib/hashing-utils';
+import { sortArrayByKey } from '@/shared/lib/sorting-utils';
 
 interface NotesState {
   notes: Note[];

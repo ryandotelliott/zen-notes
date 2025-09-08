@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { SidebarMenuAction, SidebarMenuButton, SidebarMenuItem } from '@/shared/components/ui/sidebar';
 import { Input } from '@/shared/components/ui/input';
-import { Note } from '../../data/local/notes.db';
+import { Note } from '../../data/notes.db';
 import { DropdownMenu } from '@/shared/components/ui/dropdown-menu';
 import { Edit, MoreHorizontal, Trash2 } from 'lucide-react';
 import { cn } from '@/shared/lib/ui-utils';
