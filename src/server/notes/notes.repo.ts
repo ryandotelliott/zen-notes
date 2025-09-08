@@ -27,4 +27,4 @@ async function remove(id: string) {
   return await prisma.note.delete({ where: { id } });
 }
 
-export { getAll, get, add, update, remove };
+export const notesServerRepository = { getAll, get, add, update, remove };
