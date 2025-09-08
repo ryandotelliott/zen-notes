@@ -1,14 +1,14 @@
 'use client';
 
 import { JSONContent } from '@tiptap/react';
-import { Note } from '@/shared/schemas/notes';
+import { LocalNote } from '@/shared/schemas/notes';
 import { CreateNoteDTO, notesRepository } from '../data/notes.repo';
 import { create } from 'zustand';
 import { hashJsonStable, hashStringSHA256 } from '@/shared/lib/hashing-utils';
 import { sortArrayByKey } from '@/shared/lib/sorting-utils';
 
 interface NotesState {
-  notes: Note[];
+  notes: LocalNote[];
   selectedNoteId: string | null;
   isLoading: boolean;
   error: string | null;
@@ -41,13 +41,17 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
   addNote: async (noteDto: CreateNoteDTO) => {
     const tempId = `temp_${Date.now()}`;
-    const optimisticNote: Note = {
+    const optimisticNote: LocalNote = {
       id: tempId,
       ...noteDto,
       content_json: noteDto.content_json,
       content_text: noteDto.content_text,
       createdAt: new Date(),
       updatedAt: new Date(),
+      deletedAt: null,
+      syncStatus: 'pending',
+      baseVersion: 0,
+      version: 0,
     };
 
     set((state) => ({
