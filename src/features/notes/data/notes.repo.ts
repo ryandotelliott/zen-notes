@@ -92,34 +92,8 @@ async function updateFromServer(serverNote: NoteDTO): Promise<void> {
     await db.notes.add(localNoteData);
   }
 }
-async function getConflictedNotes(): Promise<LocalNote[]> {
-  return await db.notes.filter((note) => note.syncStatus === 'conflict').toArray();
-}
 
-async function markConflict(id: string): Promise<void> {
-  await db.notes.update(id, {
-    syncStatus: 'conflict',
-  });
-}
-
-async function resolveConflict(id: string, resolution: 'local' | 'remote'): Promise<void> {
-  const note = await db.notes.get(id);
-  if (!note) return;
-
-  if (resolution === 'local') {
-    // Keep local changes, will sync on next attempt
-    await db.notes.update(id, {
-      syncStatus: 'pending',
-    });
-  } else {
-    // Discard local changes and fetch remote
-    await db.notes.update(id, {
-      syncStatus: 'synced',
-    });
-  }
-}
-
-export const notesRepository = {
+export const localNotesRepository = {
   getAll,
   get,
   getUnsyncedNotes,
@@ -130,7 +104,4 @@ export const notesRepository = {
 
   // Syncing
   updateFromServer,
-  getConflictedNotes,
-  markConflict,
-  resolveConflict,
 };

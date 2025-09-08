@@ -2,7 +2,7 @@
 
 import { JSONContent } from '@tiptap/react';
 import { LocalNote } from '@/shared/schemas/notes';
-import { CreateNoteDTO, notesRepository } from '../data/notes.repo';
+import { CreateNoteDTO, localNotesRepository } from '../data/notes.repo';
 import { create } from 'zustand';
 import { hashJsonStable, hashStringSHA256 } from '@/shared/lib/hashing-utils';
 import { sortArrayByKey } from '@/shared/lib/sorting-utils';
@@ -29,7 +29,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   fetchNotes: async () => {
     set({ isLoading: true, error: null });
     try {
-      const notes = await notesRepository.getAll();
+      const notes = await localNotesRepository.getAll();
       const noteToSelect = notes.length > 0 ? notes[0].id : null;
 
       set({ notes, isLoading: false, selectedNoteId: noteToSelect });
@@ -60,7 +60,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }));
 
     try {
-      const savedNote = await notesRepository.add(noteDto);
+      const savedNote = await localNotesRepository.add(noteDto);
 
       set((state) => {
         const newNotes = state.notes.map((note) => (note.id === tempId ? savedNote : note));
@@ -123,7 +123,10 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     });
 
     try {
-      const updatedNote = await notesRepository.update(id, { content_json: content_json, content_text: content_text });
+      const updatedNote = await localNotesRepository.update(id, {
+        content_json: content_json,
+        content_text: content_text,
+      });
 
       set((state) => {
         const newNotes = state.notes.map((note) => (note.id === id ? updatedNote : note));
@@ -180,7 +183,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     });
 
     try {
-      const updatedNote = await notesRepository.update(id, { title });
+      const updatedNote = await localNotesRepository.update(id, { title });
 
       set((state) => {
         const newNotes = state.notes.map((note) =>
@@ -214,7 +217,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }));
 
     try {
-      await notesRepository.remove(id);
+      await localNotesRepository.remove(id);
     } catch (err) {
       console.error('Failed to delete note from IndexedDB:', err);
       set((state) => ({ error: 'Could not delete the note. Please try again.', notes: state.notes }));

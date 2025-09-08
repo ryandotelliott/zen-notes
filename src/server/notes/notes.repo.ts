@@ -64,12 +64,20 @@ async function update(id: string, updateData: NoteUpdateDTO): Promise<NoteDTO> {
     throw new Error('VERSION_CONFLICT');
   }
 
+  if (currentNote.deletedAt) {
+    // Block updates to deleted notes
+    throw new Error('VERSION_CONFLICT');
+  }
+
+  const { title, content_text, content_json } = updateData;
+
   const updatedNote = await prisma.note.update({
     where: { id },
     data: {
-      ...updateData,
+      title,
+      content_text,
+      content_json: JSON.stringify(content_json),
       version: { increment: 1 },
-      content_json: JSON.stringify(updateData.content_json),
     },
   });
 
