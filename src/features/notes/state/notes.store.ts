@@ -1,7 +1,7 @@
 'use client';
 
 import { JSONContent } from '@tiptap/react';
-import { Note } from '../data/notes.db';
+import { Note } from '@/shared/schemas/notes';
 import { CreateNoteDTO, notesRepository } from '../data/notes.repo';
 import { create } from 'zustand';
 import { hashJsonStable, hashStringSHA256 } from '@/shared/lib/hashing-utils';
@@ -46,8 +46,8 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       ...noteDto,
       content_json: noteDto.content_json,
       content_text: noteDto.content_text,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
     set((state) => ({
@@ -109,7 +109,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     set((state) => {
       const newNotes = state.notes.map((note) =>
         note.id === id
-          ? { ...note, content_json: content_json, content_text: content_text, updatedAt: Date.now() }
+          ? { ...note, content_json: content_json, content_text: content_text, updatedAt: new Date() }
           : note,
       );
 
@@ -169,7 +169,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }
 
     set((state) => {
-      const newNotes = state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: Date.now() } : note));
+      const newNotes = state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: new Date() } : note));
       return {
         notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
       };

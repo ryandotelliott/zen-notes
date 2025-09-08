@@ -1,16 +1,7 @@
 'use client';
 
-import { JSONContent } from '@tiptap/react';
+import { Note } from '@/shared/schemas/notes';
 import Dexie, { EntityTable } from 'dexie';
-
-interface Note {
-  id: string;
-  title: string;
-  content_json: JSONContent;
-  content_text: string;
-  createdAt: number;
-  updatedAt: number;
-}
 
 class NotesDB extends Dexie {
   notes!: EntityTable<Note, 'id'>;

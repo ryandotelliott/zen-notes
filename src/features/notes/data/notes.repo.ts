@@ -1,6 +1,7 @@
 'use client';
 
-import { db, type Note } from './notes.db';
+import { db } from '@/features/notes/data/notes.db';
+import { type Note } from '@/shared/schemas/notes';
 
 export type CreateNoteDTO = Pick<Note, 'title' | 'content_json' | 'content_text'>;
 export type UpdateNoteDTO = Partial<Omit<Note, 'id' | 'createdAt'>>;
@@ -17,8 +18,8 @@ async function add(noteDto: CreateNoteDTO): Promise<Note> {
   const newNote: Note = {
     id: crypto.randomUUID(),
     ...noteDto,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
   await db.notes.add(newNote);
   return newNote;
@@ -32,7 +33,7 @@ async function update(id: string, noteDto: UpdateNoteDTO): Promise<Note> {
 
   const updatedFields = {
     ...noteDto,
-    updatedAt: Date.now(),
+    updatedAt: new Date(),
   };
 
   await db.notes.update(id, updatedFields);
