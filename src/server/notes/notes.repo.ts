@@ -25,6 +25,25 @@ async function getAll(): Promise<NoteDTO[]> {
   }));
 }
 
+async function getUpdatedSince(since: Date, cutoff: Date): Promise<NoteDTO[]> {
+  const notes = await prisma.note.findMany({
+    where: {
+      updatedAt: {
+        gt: since,
+        lte: cutoff,
+      },
+    },
+    orderBy: {
+      updatedAt: 'asc',
+    },
+  });
+
+  return notes.map((note) => ({
+    ...note,
+    content_json: parseJsonContent(note.content_json),
+  }));
+}
+
 async function get(id: string): Promise<NoteDTO | null> {
   const note = await prisma.note.findUnique({ where: { id } });
   if (!note) {
@@ -111,4 +130,4 @@ async function remove(id: string, baseVersion?: number): Promise<NoteDTO> {
   };
 }
 
-export const notesServerRepository = { getAll, get, add, update, remove };
+export const notesServerRepository = { getAll, getUpdatedSince, get, add, update, remove };

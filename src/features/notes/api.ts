@@ -5,11 +5,12 @@ const API_BASE = '/api/notes';
 type ApiOk<T> = { ok: true; data: T };
 type ApiErr<T> = {
   ok: false;
-  code: 'conflict' | 'not_found' | 'bad_request' | 'server' | 'network';
+  code: 'conflict' | 'not_found' | 'bad_request' | 'server';
   status?: number;
   data?: T;
 };
 export type ApiResult<T> = ApiOk<T> | ApiErr<T>;
+export type ApiResultWithCursor<T> = ApiResult<T> & { nextCursor?: string };
 
 async function json<T>(res: Response): Promise<ApiResult<T>> {
   if (!res.ok) {
@@ -22,17 +23,37 @@ async function json<T>(res: Response): Promise<ApiResult<T>> {
   return { ok: true, data };
 }
 
-export async function getAll(): Promise<ApiResult<NoteDTO[]>> {
+export async function getAll(): Promise<ApiResultWithCursor<NoteDTO[]>> {
   const response = await fetch(API_BASE);
 
   try {
-    return await json(response);
+    const res = await json<NoteDTO[]>(response);
+    const nextCursor = response.headers.get('X-Next-Cursor') ?? undefined;
+    if (res.ok) {
+      return { ...res, nextCursor };
+    }
+    return res;
   } catch {
     return { ok: false, code: 'server', status: 500 };
   }
 }
 
-export async function get(id: string): Promise<ApiResult<NoteDTO>> {
+export async function getSince(since: string): Promise<ApiResultWithCursor<NoteDTO[]>> {
+  const response = await fetch(`${API_BASE}?since=${since}`);
+
+  try {
+    const res = await json<NoteDTO[]>(response);
+    const nextCursor = response.headers.get('X-Next-Cursor') ?? undefined;
+    if (res.ok) {
+      return { ...res, nextCursor };
+    }
+    return res;
+  } catch {
+    return { ok: false, code: 'server', status: 500 };
+  }
+}
+
+export async function getById(id: string): Promise<ApiResult<NoteDTO>> {
   const response = await fetch(`${API_BASE}/${id}`);
 
   try {
@@ -83,4 +104,4 @@ export async function remove(id: string, baseVersion?: number): Promise<ApiResul
   }
 }
 
-export const notesApi = { getAll, get, create, update, remove };
+export const notesApi = { getAll, getSince, get: getById, create, update, remove };

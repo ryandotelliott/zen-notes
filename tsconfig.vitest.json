@@ -4,13 +4,8 @@
     "composite": true,
     "noEmit": false,
     "paths": {
-      "@/factories/*": ["./test/factories/*"],
-      "@/*": ["./src/*"],
-      "@/components/*": ["./src/shared/components/*"],
-      "@/lib/*": ["./src/shared/lib/*"],
-      "@/hooks/*": ["./src/shared/hooks/*"],
-      "@/providers/*": ["./src/shared/providers/*"],
-      "@/features/*": ["./src/features/*"]
+      "@/test/*": ["./test/*"],
+      "@/*": ["./src/*"]
     }
   },
   "exclude": ["node_modules"]

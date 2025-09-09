@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getLWWResolution, needsPull, isTombstoned } from './policy';
 import { addSecs } from '@/shared/lib/date-utils';
-import { createMockLocalNote, createMockNoteDTO, DEFAULT_NOTE_DATE } from '@/factories/notes';
+import { createMockLocalNote, createMockNoteDTO, DEFAULT_NOTE_DATE } from '@/test/factories/notes';
 
 describe('getLWWResolution', () => {
   it('returns "local" when local updatedAt is newer than remote updatedAt', () => {

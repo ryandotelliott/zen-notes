@@ -150,12 +150,18 @@ async function pullServerChanges(): Promise<SyncResults> {
   let pulled = 0;
   let conflicts = 0;
 
-  const pullRes = await notesApi.getAll();
+  const cursorKey = 'notes:lastPullCursor';
+  const since = window.localStorage.getItem(cursorKey);
+
+  const pullRes = since ? await notesApi.getSince(since) : await notesApi.getAll();
   if (!pullRes.ok) {
     return { success: false, pulled, conflicts, pushed: 0 };
   }
 
-  for (const remote of pullRes.data) {
+  const data = pullRes.data;
+  const nextCursor = pullRes.nextCursor;
+
+  for (const remote of data) {
     const local = await localNotesRepository.get(remote.id);
     if (!local) {
       await localNotesRepository.updateFromServer(remote);
@@ -179,6 +185,10 @@ async function pullServerChanges(): Promise<SyncResults> {
       }
       // else keep local as pending; it will push next sync
     }
+  }
+
+  if (nextCursor) {
+    window.localStorage.setItem(cursorKey, nextCursor);
   }
 
   return { success: true, pulled, conflicts, pushed: 0 };
