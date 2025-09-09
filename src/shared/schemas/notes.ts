@@ -15,7 +15,6 @@ export interface BaseNote {
 export interface LocalNote extends BaseNote {
   content_json: JSONContent;
   syncStatus: 'pending' | 'synced';
-  lastSyncedAt?: Date;
   baseVersion: number; // last server-acknowledged version
 }
 

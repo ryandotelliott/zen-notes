@@ -97,7 +97,6 @@ async function updateFromServer(serverNote: NoteDTO): Promise<void> {
     await db.notes.update(serverNote.id, {
       ...serverNote,
       syncStatus: 'synced',
-      lastSyncedAt: new Date(),
       baseVersion: serverNote.version,
     });
   } else {
@@ -105,7 +104,6 @@ async function updateFromServer(serverNote: NoteDTO): Promise<void> {
     const localNoteData: LocalNote = {
       ...serverNote,
       syncStatus: 'synced',
-      lastSyncedAt: new Date(),
       baseVersion: serverNote.version,
     };
     await db.notes.add(localNoteData);
