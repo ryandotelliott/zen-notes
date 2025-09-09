@@ -10,17 +10,19 @@ export async function GET(params: { params: { id: string } }) {
   return Response.json(note);
 }
 
-export async function PUT(request: Request, params: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
   try {
     const data = await request.json();
-    const note = await notesServerRepository.update(params.params.id, data);
+    const note = await notesServerRepository.update(id, data);
 
     return Response.json(note);
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.message === 'VERSION_CONFLICT') {
         // Return current server state for conflict resolution
-        const currentNote = await notesServerRepository.get(params.params.id);
+        const currentNote = await notesServerRepository.get(id);
         return Response.json(currentNote, { status: 409 });
       }
 
@@ -33,19 +35,21 @@ export async function PUT(request: Request, params: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(request: Request, params: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
   try {
     const url = new URL(request.url);
     const baseVersion = url.searchParams.get('baseVersion');
     const baseVersionNum = baseVersion ? parseInt(baseVersion, 10) : undefined;
 
-    const note = await notesServerRepository.remove(params.params.id, baseVersionNum);
+    const note = await notesServerRepository.remove(id, baseVersionNum);
 
     return Response.json(note);
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.message === 'VERSION_CONFLICT') {
-        const currentNote = await notesServerRepository.get(params.params.id);
+        const currentNote = await notesServerRepository.get(id);
         return Response.json(currentNote, { status: 409 });
       }
 

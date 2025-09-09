@@ -1,4 +1,4 @@
-import { NoteDTO, NotesSchema } from '@/shared/schemas/notes';
+import { NoteDTO, NoteCreateDTO, NoteUpdateDTO, NotesSchema } from '@/shared/schemas/notes';
 
 const API_BASE = '/api/notes';
 
@@ -42,7 +42,7 @@ export async function get(id: string): Promise<ApiResult<NoteDTO>> {
   }
 }
 
-export async function create(note: NoteDTO): Promise<ApiResult<NoteDTO>> {
+export async function create(note: NoteCreateDTO): Promise<ApiResult<NoteDTO>> {
   const response = await fetch(API_BASE, {
     method: 'POST',
     body: JSON.stringify(note),
@@ -55,7 +55,7 @@ export async function create(note: NoteDTO): Promise<ApiResult<NoteDTO>> {
   }
 }
 
-export async function update(id: string, note: NoteDTO): Promise<ApiResult<NoteDTO>> {
+export async function update(id: string, note: NoteUpdateDTO & { baseVersion: number }): Promise<ApiResult<NoteDTO>> {
   const response = await fetch(`${API_BASE}/${id}`, {
     method: 'PUT',
     body: JSON.stringify(note),

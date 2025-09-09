@@ -24,16 +24,34 @@ export async function syncWithRemote(): Promise<{
         const baseVersion = note.baseVersion;
         const isDeleted = isTombstoned(note);
 
-        const doCreate = note.version === 0 && !isDeleted;
-        const doUpdate = note.version > 0 && !isDeleted;
+        // Decide create vs update based on last server-acknowledged version
+        const doCreate = baseVersion === 0 && !isDeleted;
+        const doUpdate = baseVersion > 0 && !isDeleted;
 
         let res: ApiResult<NoteDTO>;
 
         if (doCreate) {
-          res = await notesApi.create(note);
+          res = await notesApi.create({
+            id: note.id,
+            title: note.title,
+            content_text: note.content_text,
+            content_json: note.content_json,
+          });
         } else if (doUpdate) {
-          res = await notesApi.update(note.id, note);
+          // Send update DTO shape with baseVersion for optimistic concurrency
+          res = await notesApi.update(note.id, {
+            title: note.title,
+            content_text: note.content_text,
+            content_json: note.content_json,
+            baseVersion,
+          });
         } else {
+          // If the note was never on server and is now deleted locally, just erase it locally
+          if (baseVersion === 0) {
+            await localNotesRepository.erase(note.id);
+            pushed++;
+            return;
+          }
           res = await notesApi.remove(note.id, baseVersion);
         }
 
@@ -51,9 +69,14 @@ export async function syncWithRemote(): Promise<{
             const winner = getLWWResolution(note, serverNote);
 
             if (winner === 'local') {
-              // Push local changes to server
               if (doUpdate) {
-                const retry = await notesApi.update(note.id, note);
+                const retry = await notesApi.update(note.id, {
+                  title: note.title,
+                  content_text: note.content_text,
+                  content_json: note.content_json,
+                  // Use server version as new baseVersion to force overwrite
+                  baseVersion: serverNote.version,
+                });
                 if (retry.ok) {
                   // Update the local note to match the remote to ensure they're now in sync
                   await localNotesRepository.updateFromServer(retry.data);
@@ -63,7 +86,10 @@ export async function syncWithRemote(): Promise<{
               } else {
                 // The only other way we'd have a conflict is if the note was deleted locally, but not on the server
                 // Remove the note from the server - use the remote version to overcome the conflict error
-                await notesApi.remove(note.id, serverNote.version);
+                const delRetry = await notesApi.remove(note.id, serverNote.version);
+                if (delRetry.ok) {
+                  await localNotesRepository.updateFromServer(delRetry.data);
+                }
                 pushed++;
                 return;
               }
@@ -72,6 +98,31 @@ export async function syncWithRemote(): Promise<{
             // Otherwise, it's a remove conflict, so pull remote changes to local
             await localNotesRepository.updateFromServer(serverNote);
             pulled++;
+            return;
+          }
+        }
+
+        // Handle not_found outcomes:
+        if (res.code === 'not_found') {
+          if (doCreate) {
+            // Creating but got 404 (shouldn't happen on POST); leave pending to retry
+          } else if (doUpdate) {
+            // Remote missing; create it from local state
+            const createRes = await notesApi.create({
+              id: note.id,
+              title: note.title,
+              content_text: note.content_text,
+              content_json: note.content_json,
+            });
+            if (createRes.ok) {
+              await localNotesRepository.updateFromServer(createRes.data);
+              pushed++;
+              return;
+            }
+          } else {
+            // Deleting, but server already doesn't have it; erase locally
+            await localNotesRepository.erase(note.id);
+            pushed++;
             return;
           }
         }

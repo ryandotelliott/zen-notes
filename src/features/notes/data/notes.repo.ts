@@ -6,8 +6,12 @@ import type { LocalNote, NoteDTO } from '@/shared/schemas/notes';
 export type CreateNoteDTO = Pick<LocalNote, 'title' | 'content_json' | 'content_text'>;
 export type UpdateNoteDTO = Partial<Omit<LocalNote, 'id' | 'createdAt' | 'version' | 'baseVersion'>>;
 
-async function getAll(): Promise<LocalNote[]> {
-  return await db.notes.orderBy('createdAt').reverse().toArray();
+async function getAll(includeDeleted: boolean = false): Promise<LocalNote[]> {
+  const query = db.notes.orderBy('createdAt').reverse();
+  if (!includeDeleted) {
+    query.filter((note) => note.deletedAt === null);
+  }
+  return await query.toArray();
 }
 
 async function get(id: string): Promise<LocalNote | undefined> {
@@ -15,7 +19,7 @@ async function get(id: string): Promise<LocalNote | undefined> {
 }
 
 async function getUnsyncedNotes(): Promise<LocalNote[]> {
-  return await db.notes.where('syncStatus').anyOf(['pending', 'failed']).toArray();
+  return await db.notes.where('syncStatus').equals('pending').toArray();
 }
 
 async function getDeletedNotes(): Promise<LocalNote[]> {
@@ -48,7 +52,9 @@ async function update(id: string, noteDto: UpdateNoteDTO): Promise<LocalNote> {
     updatedAt: new Date(),
     syncStatus: 'pending',
     deletedAt: null,
-    baseVersion: noteToUpdate.version,
+    // Preserve baseVersion as the last server-acknowledged version.
+    // Local edits must NOT change baseVersion.
+    baseVersion: noteToUpdate.baseVersion,
     version: noteToUpdate.version + 1,
   } as const;
 
@@ -56,6 +62,9 @@ async function update(id: string, noteDto: UpdateNoteDTO): Promise<LocalNote> {
   return { ...noteToUpdate, ...updatedFields };
 }
 
+/**
+ * Marks a note as deleted (tombstoned) in the database.
+ */
 async function remove(id: string): Promise<void> {
   const noteToUpdate = await db.notes.get(id);
   if (!noteToUpdate) {
@@ -65,8 +74,18 @@ async function remove(id: string): Promise<void> {
   await db.notes.update(id, {
     deletedAt: new Date(),
     syncStatus: 'pending',
-    baseVersion: noteToUpdate.version,
+    // Preserve baseVersion as the last server-acknowledged version.
+    // Local edits must NOT change baseVersion.
+    baseVersion: noteToUpdate.baseVersion,
   });
+}
+
+/**
+ * Erases a note from the database.
+ * This is used when a note is deleted before ever being on the server, or if a deleted note is being cleaned.
+ */
+async function erase(id: string): Promise<void> {
+  await db.notes.delete(id);
 }
 
 // Syncing Methods
@@ -101,6 +120,7 @@ export const localNotesRepository = {
   add,
   update,
   remove,
+  erase,
 
   // Syncing
   updateFromServer,

@@ -14,7 +14,7 @@ export interface BaseNote {
 
 export interface LocalNote extends BaseNote {
   content_json: JSONContent;
-  syncStatus: 'pending' | 'synced' | 'conflict';
+  syncStatus: 'pending' | 'synced';
   lastSyncedAt?: Date;
   baseVersion: number; // last server-acknowledged version
 }
@@ -30,9 +30,10 @@ export const NotesSchema = z.object({
   title: z.string(),
   content_text: z.string(),
   content_json: z.custom<JSONContent>(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-  deletedAt: z.date().nullable(),
+  // Coerce any ISO strings into date objects
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+  deletedAt: z.coerce.date().nullable(),
   version: z.number(),
 });
 
