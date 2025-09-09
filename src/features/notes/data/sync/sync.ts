@@ -135,7 +135,7 @@ export async function syncWithRemote(): Promise<{
 
   const pullRes = await notesApi.getAll();
   if (!pullRes.ok) {
-    return { pushed, pulled, conflicts, success: false };
+    return { success: false, pushed, pulled, conflicts };
   }
 
   for (const remote of pullRes.data) {

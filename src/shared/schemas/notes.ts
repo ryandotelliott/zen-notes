@@ -25,7 +25,7 @@ export type NoteUpdateDTO = Pick<BaseNote, 'title' | 'content_text' | 'content_j
   baseVersion: number; // client's last known server version
 };
 
-export const NotesSchema = z.object({
+export const NoteSchema = z.object({
   id: z.string(),
   title: z.string(),
   content_text: z.string(),
@@ -36,5 +36,6 @@ export const NotesSchema = z.object({
   deletedAt: z.coerce.date().nullable(),
   version: z.number(),
 });
+export const NotesSchema = z.array(NoteSchema);
 
 export const JsonContentSchema = z.custom<JSONContent>();
