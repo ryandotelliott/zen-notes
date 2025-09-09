@@ -4,7 +4,7 @@ import HeaderBar from '@/components/header-bar';
 import { Providers } from '@/shared/providers/providers';
 import NotesSidebar from '@/components/notes-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { Metadata } from 'next/dist/types';
+import { Metadata } from 'next/types';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
