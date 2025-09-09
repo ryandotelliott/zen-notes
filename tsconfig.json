@@ -27,6 +27,14 @@
       "@/features/*": ["./src/features/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "vitest.config.mts"],
-  "exclude": ["node_modules"]
+  "references": [{ "path": "tsconfig.vitest.json" }],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "vitest.config.mts",
+    "tsconfig.vitest.json"
+  ],
+  "exclude": ["node_modules", "test"]
 }

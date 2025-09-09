@@ -1,15 +1,24 @@
-import { notesApi, ApiResult } from '@/features/notes/api';
+import { notesApi, type ApiResult } from '@/features/notes/api';
 import { localNotesRepository } from '@/features/notes/data/notes.repo';
 import { getLWWResolution, isTombstoned, needsPull } from '@/features/notes/data/sync/policy';
 import { NoteDTO } from '@/shared/schemas/notes';
 import plimit from 'p-limit';
 
-export async function syncWithRemote(): Promise<{
+interface SyncResults {
+  success: boolean;
   pushed: number;
   pulled: number;
   conflicts: number;
-  success: boolean;
-}> {
+}
+
+/** @internal */
+export const __ops = {
+  pushLocalChanges,
+  pullServerChanges,
+};
+
+/** Process the local notes that are unsynced - pushing to the server and resolving conflicts */
+async function pushLocalChanges(): Promise<SyncResults> {
   let pushed = 0;
   let pulled = 0;
   let conflicts = 0;
@@ -133,9 +142,17 @@ export async function syncWithRemote(): Promise<{
     ),
   );
 
+  return { success: true, pushed, pulled, conflicts };
+}
+
+/** Pull any changes from the server and resolve conflicts */
+async function pullServerChanges(): Promise<SyncResults> {
+  let pulled = 0;
+  let conflicts = 0;
+
   const pullRes = await notesApi.getAll();
   if (!pullRes.ok) {
-    return { success: false, pushed, pulled, conflicts };
+    return { success: false, pulled, conflicts, pushed: 0 };
   }
 
   for (const remote of pullRes.data) {
@@ -164,5 +181,26 @@ export async function syncWithRemote(): Promise<{
     }
   }
 
-  return { success: true, pushed, pulled, conflicts };
+  return { success: true, pulled, conflicts, pushed: 0 };
+}
+
+/** Run sync process - first pushing local changes, then pulling from server */
+export async function syncWithRemote(): Promise<SyncResults> {
+  let success = true;
+  let pushed = 0;
+  let pulled = 0;
+  let conflicts = 0;
+
+  const pushResults = await __ops.pushLocalChanges();
+  success = success && pushResults.success;
+  pushed = pushed + pushResults.pushed;
+  pulled = pulled + pushResults.pulled;
+  conflicts = conflicts + pushResults.conflicts;
+
+  const pullResults = await __ops.pullServerChanges();
+  success = success && pullResults.success;
+  pulled = pulled + pullResults.pulled;
+  conflicts = conflicts + pullResults.conflicts;
+
+  return { success, pushed, pulled, conflicts };
 }
