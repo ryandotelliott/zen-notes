@@ -1,5 +1,3 @@
-'use client';
-
 import { useEditor, EditorContent, JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
@@ -20,6 +18,7 @@ const AUTOSAVE_DEBOUNCE_MS = 2000;
 export default function EditorMain({ className }: EditorBodyProps) {
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId);
   const updateNoteContent = useNotesStore((s) => s.updateNoteContent);
+  const activeNote = useNotesStore((s) => s.notes.find((n) => n.id === s.selectedNoteId));
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const titleWrapperRef = useRef<HTMLDivElement | null>(null);
@@ -65,6 +64,20 @@ export default function EditorMain({ className }: EditorBodyProps) {
     };
   }, [editor, selectedNoteId, updateNoteContent]);
 
+  // Keep editor content in sync when Dexie/store updates the active note content
+  useEffect(() => {
+    if (!editor || !activeNote) return;
+
+    // Avoid unnecessary setContent if text is already in sync
+    // This prevents us from changing content when updating the store locally.
+    const currentText = editor.getText();
+    if (currentText === (activeNote.content_text ?? '')) return;
+
+    const content =
+      activeNote.content_json && Object.keys(activeNote.content_json).length > 0 ? activeNote.content_json : '';
+    editor.commands.setContent(content, { emitUpdate: false });
+  }, [editor, activeNote]);
+
   useEffect(() => {
     return () => {
       editor?.destroy();
@@ -108,6 +121,8 @@ export default function EditorMain({ className }: EditorBodyProps) {
       ro.disconnect();
     };
   }, []);
+
+  // no-op
 
   return (
     <div className={cn('grid h-full min-h-0 grid-cols-[auto_1fr] gap-x-4', className)}>
