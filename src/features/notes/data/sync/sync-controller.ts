@@ -1,3 +1,5 @@
+'use client';
+
 import { syncWithRemote } from './sync';
 
 type SyncController = {
