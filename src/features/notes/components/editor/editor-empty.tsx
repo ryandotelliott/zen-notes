@@ -1,5 +1,3 @@
-'use client';
-
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/ui-utils';
 import { useNotesStore } from '@/features/notes/state/notes.store';

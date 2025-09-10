@@ -1,22 +1,23 @@
-'use client';
-
 import { cn } from '@/shared/lib/ui-utils';
 import { useNotesStore } from '@/features/notes/state/notes.store';
 import { useDebouncedCallback } from '@/shared/hooks/use-debounced-callback';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, KeyboardEvent } from 'react';
 
 function cleanText(t: string) {
   return t.replace(/\u200B/g, '').trim();
 }
 
-const DEBOUNCE_MS = 500;
+const AUTOSAVE_DEBOUNCE_MS = 500;
 
 export default function EditorTitle({
   onKeyDown,
+  className,
 }: {
-  onKeyDown: (e: React.KeyboardEvent<HTMLHeadingElement>) => void;
+  onKeyDown?: (e: KeyboardEvent<HTMLHeadingElement>) => void;
+  className?: string;
 }) {
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId);
+  const activeNote = useNotesStore((s) => s.notes.find((n) => n.id === s.selectedNoteId));
   const updateNoteTitle = useNotesStore((s) => s.updateNoteTitle);
 
   const titleRef = useRef<HTMLHeadingElement | null>(null);
@@ -27,7 +28,7 @@ export default function EditorTitle({
     if (selectedNoteId) {
       updateNoteTitle(selectedNoteId, title);
     }
-  }, DEBOUNCE_MS);
+  }, AUTOSAVE_DEBOUNCE_MS);
 
   const cancelPendingSave = () => {
     if (saveTimeoutRef.current) {
@@ -52,21 +53,22 @@ export default function EditorTitle({
     return () => el.removeEventListener('input', onInput);
   }, [debouncedUpdate]);
 
-  // Sync title from store when the selected note changes
+  // Sync title from store whenever the active note or its title changes (including Dexie updates)
   useEffect(() => {
-    const state = useNotesStore.getState();
-    const selectedNote = state.notes.find((n) => n.id === selectedNoteId);
-    const newText = cleanText(selectedNote?.title ?? '');
+    const newText = cleanText(activeNote?.title ?? '');
+    const el = titleRef.current;
+    if (!el) return;
 
-    if (titleRef.current) {
-      const current = cleanText(titleRef.current.textContent || '');
-      if (current !== newText) {
-        titleRef.current.textContent = newText;
-      }
-      titleRef.current.dataset.empty = String(newText.length === 0);
-      latestTitleRef.current = newText; // keep ref in sync
+    const current = cleanText(el.textContent || '');
+
+    // Only update the title if it has changed.
+    // This prevents us from changing content when updating the store locally.
+    if (current !== newText) {
+      el.textContent = newText;
     }
-  }, [selectedNoteId]);
+    el.dataset.empty = String(newText.length === 0);
+    latestTitleRef.current = newText; // keep ref in sync
+  }, [selectedNoteId, activeNote?.title, activeNote?.updatedAt]);
 
   // Clear autosave on unmount and when switching notes
   useEffect(() => cancelPendingSave(), [selectedNoteId]);
@@ -78,6 +80,7 @@ export default function EditorTitle({
         'text-3xl font-bold focus:outline-none',
         'before:pointer-events-none before:text-muted-foreground/50',
         'data-[empty=true]:before:content-[attr(data-placeholder)]',
+        className,
       )}
       contentEditable
       suppressContentEditableWarning

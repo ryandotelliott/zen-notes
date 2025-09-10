@@ -24,7 +24,8 @@
       "@/lib/*": ["./src/shared/lib/*"],
       "@/hooks/*": ["./src/shared/hooks/*"],
       "@/providers/*": ["./src/shared/providers/*"],
-      "@/features/*": ["./src/features/*"]
+      "@/features/*": ["./src/features/*"],
+      "@/test/*": ["./test/*"]
     }
   },
   "references": [{ "path": "tsconfig.vitest.json" }],
@@ -36,5 +37,5 @@
     "vitest.config.mts",
     "tsconfig.vitest.json"
   ],
-  "exclude": ["node_modules", "test"]
+  "exclude": ["node_modules", "test", "**/*.test.ts", "**/*.test.tsx"]
 }
