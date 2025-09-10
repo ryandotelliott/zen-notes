@@ -1,14 +1,14 @@
 'use client';
 
 import { JSONContent } from '@tiptap/react';
-import { Note } from '../data/local/notes.db';
-import { CreateNoteDTO, notesRepository } from '../data/local/notes.repo';
+import { LocalNote } from '@/shared/schemas/notes';
+import { CreateNoteDTO, localNotesRepository } from '../data/notes.repo';
 import { create } from 'zustand';
-import { hashJsonStable, hashStringSHA256 } from '@/shared/utils/hashing-utils';
-import { sortArrayByKey } from '@/shared/utils/sorting-utils';
+import { hashJsonStable, hashStringSHA256 } from '@/shared/lib/hashing-utils';
+import { sortArrayByKey as sortObjectArrayByKey } from '@/shared/lib/sorting-utils';
 
 interface NotesState {
-  notes: Note[];
+  notes: LocalNote[];
   selectedNoteId: string | null;
   isLoading: boolean;
   error: string | null;
@@ -20,6 +20,8 @@ interface NotesState {
   deleteNote: (id: string) => Promise<void>;
 }
 
+let hasRepoSubscription = false;
+
 export const useNotesStore = create<NotesState>((set, get) => ({
   notes: [],
   selectedNoteId: null,
@@ -29,10 +31,29 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   fetchNotes: async () => {
     set({ isLoading: true, error: null });
     try {
-      const notes = await notesRepository.getAll();
+      const notes = await localNotesRepository.getAll();
       const noteToSelect = notes.length > 0 ? notes[0].id : null;
 
       set({ notes, isLoading: false, selectedNoteId: noteToSelect });
+
+      // Lazily subscribe once to live updates so store stays in sync with Dexie.
+      // This is prevents us from having to publish events when syncing.
+      if (!hasRepoSubscription) {
+        const observable = localNotesRepository.observeAll();
+        observable.subscribe({
+          next: (emittedNotes) => {
+            const sorted = sortObjectArrayByKey(emittedNotes, 'updatedAt', 'desc');
+            const currentSelected = get().selectedNoteId;
+            const stillExists = currentSelected ? sorted.some((n) => n.id === currentSelected) : false;
+            const nextSelected = stillExists ? currentSelected : (sorted[0]?.id ?? null);
+            set({ notes: sorted, selectedNoteId: nextSelected, isLoading: false });
+          },
+          error: (e) => {
+            console.error('Live query failed:', e);
+          },
+        });
+        hasRepoSubscription = true;
+      }
     } catch (err) {
       console.error('Failed to fetch notes from IndexedDB:', err);
       set({ error: 'Failed to load notes.', isLoading: false });
@@ -41,13 +62,17 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
   addNote: async (noteDto: CreateNoteDTO) => {
     const tempId = `temp_${Date.now()}`;
-    const optimisticNote: Note = {
+    const optimisticNote: LocalNote = {
       id: tempId,
       ...noteDto,
       content_json: noteDto.content_json,
       content_text: noteDto.content_text,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+      syncStatus: 'pending',
+      baseVersion: 0,
+      version: 0,
     };
 
     set((state) => ({
@@ -56,12 +81,12 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }));
 
     try {
-      const savedNote = await notesRepository.add(noteDto);
+      const savedNote = await localNotesRepository.add(noteDto);
 
       set((state) => {
         const newNotes = state.notes.map((note) => (note.id === tempId ? savedNote : note));
         return {
-          notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+          notes: sortObjectArrayByKey(newNotes, 'updatedAt', 'desc'),
           selectedNoteId: savedNote.id,
         };
       });
@@ -109,23 +134,26 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     set((state) => {
       const newNotes = state.notes.map((note) =>
         note.id === id
-          ? { ...note, content_json: content_json, content_text: content_text, updatedAt: Date.now() }
+          ? { ...note, content_json: content_json, content_text: content_text, updatedAt: new Date() }
           : note,
       );
 
       return {
-        notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+        notes: sortObjectArrayByKey(newNotes, 'updatedAt', 'desc'),
       };
     });
 
     try {
-      const updatedNote = await notesRepository.update(id, { content_json: content_json, content_text: content_text });
+      const updatedNote = await localNotesRepository.update(id, {
+        content_json: content_json,
+        content_text: content_text,
+      });
 
       set((state) => {
         const newNotes = state.notes.map((note) => (note.id === id ? updatedNote : note));
 
         return {
-          notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+          notes: sortObjectArrayByKey(newNotes, 'updatedAt', 'desc'),
           error: null,
         };
       });
@@ -144,7 +172,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         );
         return {
           error: 'Could not save the note content. Please try again.',
-          notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+          notes: sortObjectArrayByKey(newNotes, 'updatedAt', 'desc'),
         };
       });
     }
@@ -169,21 +197,21 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }
 
     set((state) => {
-      const newNotes = state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: Date.now() } : note));
+      const newNotes = state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: new Date() } : note));
       return {
-        notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+        notes: sortObjectArrayByKey(newNotes, 'updatedAt', 'desc'),
       };
     });
 
     try {
-      const updatedNote = await notesRepository.update(id, { title });
+      const updatedNote = await localNotesRepository.update(id, { title });
 
       set((state) => {
         const newNotes = state.notes.map((note) =>
           note.id === id ? { ...note, title: updatedNote.title, updatedAt: updatedNote.updatedAt } : note,
         );
         return {
-          notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+          notes: sortObjectArrayByKey(newNotes, 'updatedAt', 'desc'),
           error: null,
         };
       });
@@ -195,7 +223,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         );
 
         return {
-          notes: sortArrayByKey(newNotes, 'updatedAt', 'desc'),
+          notes: sortObjectArrayByKey(newNotes, 'updatedAt', 'desc'),
           error: 'Could not save the note title. Please try again.',
         };
       });
@@ -210,7 +238,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }));
 
     try {
-      await notesRepository.remove(id);
+      await localNotesRepository.remove(id);
     } catch (err) {
       console.error('Failed to delete note from IndexedDB:', err);
       set((state) => ({ error: 'Could not delete the note. Please try again.', notes: state.notes }));

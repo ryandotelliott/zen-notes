@@ -32,7 +32,5 @@ export function sortArrayByKey<T extends Record<string, any>>(
     return 0;
   });
 
-  console.log('sorted', sorted);
-
   return sorted;
 }

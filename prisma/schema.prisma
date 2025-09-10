@@ -15,9 +15,12 @@ datasource db {
 }
 
 model Note {
-  id        String   @id @default(uuid())
-  title     String   @db.VarChar(255)
-  content   Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String    @id
+  title        String    @db.VarChar(255)
+  content_text String
+  content_json String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+  version      Int       @default(1)
 }
