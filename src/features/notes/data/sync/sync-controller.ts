@@ -24,6 +24,8 @@ export function getSyncController(): SyncController {
   let running = false;
   let stopped = false;
   let timer: number | null = null;
+  let backoff = INITIAL_BACKOFF_MS;
+  let releaseLeader: (() => void) | null = null;
 
   async function syncOnce() {
     const { pulled, pushed, conflicts, success } = await syncWithRemote();
@@ -53,8 +55,6 @@ export function getSyncController(): SyncController {
     // collapse multiple calls
     if (!immediate && timer) return;
 
-    let backoff = INITIAL_BACKOFF_MS;
-
     const doTick = async () => {
       try {
         if (navigator.onLine) {
@@ -66,7 +66,12 @@ export function getSyncController(): SyncController {
       } finally {
         const visible = !document.hidden;
         const next = visible ? VISIBLE_PULL_CADENCE_MS : IDLE_PULL_CADENCE_MS; // idle pull cadence
-        timer = window.setTimeout(() => loopTick(false), Math.max(backoff, next));
+        const delay = Math.max(backoff, next);
+        timer = window.setTimeout(() => {
+          // allow the next tick to proceed
+          timer = null;
+          loopTick(false);
+        }, delay);
       }
     };
 
@@ -99,6 +104,9 @@ export function getSyncController(): SyncController {
       }
       window.removeEventListener('online', onOnline);
       document.removeEventListener('visibilitychange', onVisibility);
+      // Release the Web Lock by resolving the held promise
+      releaseLeader?.();
+      releaseLeader = null;
     };
 
     // Keep a reference so stop() can call it
@@ -109,15 +117,19 @@ export function getSyncController(): SyncController {
 
   instance = {
     start() {
-      if (stopped) stopped = false;
+      if (stopped) {
+        stopped = false;
+      }
 
       if (navigator.locks.request) {
         navigator.locks
-          .request(LOCK_NAME, { ifAvailable: true }, async (lock: Lock | null) => {
+          .request(LOCK_NAME, {}, async (lock: Lock | null) => {
             if (!lock) return; // another tab is leader
             await runAsLeader();
-            // keep the lock implicitly while we run; if page hidden, the lock persists
-            await new Promise(() => {}); // never resolve; the UA releases on unload
+            // Hold the lock until released via stop()
+            await new Promise<void>((resolve) => {
+              releaseLeader = resolve;
+            });
           })
           .catch(() => {
             console.error('Locks API error, sync will not work');
