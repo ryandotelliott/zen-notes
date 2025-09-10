@@ -1,17 +1,31 @@
 'use client';
 
 import { db } from '@/features/notes/data/notes.db';
+import { liveQuery, type Observable } from 'dexie';
 import type { LocalNote, NoteDTO } from '@/shared/schemas/notes';
 
 export type CreateNoteDTO = Pick<LocalNote, 'title' | 'content_json' | 'content_text'>;
 export type UpdateNoteDTO = Partial<Omit<LocalNote, 'id' | 'createdAt' | 'version' | 'baseVersion'>>;
 
 async function getAll(includeDeleted: boolean = false): Promise<LocalNote[]> {
-  const query = db.notes.orderBy('createdAt').reverse();
+  let collection = db.notes.orderBy('createdAt').reverse();
   if (!includeDeleted) {
-    query.filter((note) => note.deletedAt === null);
+    collection = collection.filter((note) => note.deletedAt === null);
   }
-  return await query.toArray();
+  return await collection.toArray();
+}
+
+/**
+ * Observable stream of notes that emits whenever the underlying table changes.
+ */
+function observeAll(includeDeleted: boolean = false): Observable<LocalNote[]> {
+  return liveQuery(async () => {
+    let collection = db.notes.orderBy('createdAt').reverse();
+    if (!includeDeleted) {
+      collection = collection.filter((note) => note.deletedAt === null);
+    }
+    return await collection.toArray();
+  });
 }
 
 async function get(id: string): Promise<LocalNote | undefined> {
@@ -122,4 +136,5 @@ export const localNotesRepository = {
 
   // Syncing
   updateFromServer,
+  observeAll,
 };
