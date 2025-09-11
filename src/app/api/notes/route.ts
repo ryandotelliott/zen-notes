@@ -1,4 +1,4 @@
-import { notesServerRepository } from '@/server/notes/notes.repo';
+import { serverNotesRepository } from '@/server/notes/notes.repo';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -12,13 +12,13 @@ export async function GET(request: Request) {
       return Response.json({ error: 'Invalid since parameter' }, { status: 400 });
     }
 
-    const notes = await notesServerRepository.getUpdatedSince(since, cutoff);
+    const notes = await serverNotesRepository.getUpdatedSince(since, cutoff);
     const res = Response.json(notes);
     res.headers.set('X-Next-Cursor', cutoff.toISOString());
     return res;
   }
 
-  const notes = await notesServerRepository.getAll();
+  const notes = await serverNotesRepository.getAll();
   const res = Response.json(notes);
   res.headers.set('X-Next-Cursor', cutoff.toISOString());
   return res;
@@ -26,6 +26,6 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const data = await request.json();
-  const note = await notesServerRepository.add(data);
+  const note = await serverNotesRepository.add(data);
   return Response.json(note);
 }
