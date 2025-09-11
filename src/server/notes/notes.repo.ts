@@ -130,4 +130,4 @@ async function remove(id: string, baseVersion?: number): Promise<NoteDTO> {
   };
 }
 
-export const notesServerRepository = { getAll, getUpdatedSince, get, add, update, remove };
+export const serverNotesRepository = { getAll, getUpdatedSince, get, add, update, remove };
