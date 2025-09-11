@@ -23,19 +23,9 @@ export default function EditorTitle({
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   const latestTitleRef = useRef<string>('');
 
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const debouncedUpdate = useDebouncedCallback((title: string) => {
-    if (selectedNoteId) {
-      updateNoteTitle(selectedNoteId, title);
-    }
+  const debouncedUpdate = useDebouncedCallback((noteId: string, title: string) => {
+    updateNoteTitle(noteId, title);
   }, AUTOSAVE_DEBOUNCE_MS);
-
-  const cancelPendingSave = () => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = null;
-    }
-  };
 
   useEffect(() => {
     const el = titleRef.current;
@@ -46,7 +36,9 @@ export default function EditorTitle({
       el.dataset.empty = String(cleanText(el.textContent || '') === '');
 
       latestTitleRef.current = cleanText(el.textContent || '');
-      debouncedUpdate(latestTitleRef.current);
+      const currentNoteId = useNotesStore.getState().selectedNoteId;
+      if (!currentNoteId) return;
+      debouncedUpdate(currentNoteId, latestTitleRef.current);
     };
 
     el.addEventListener('input', onInput);
@@ -71,7 +63,17 @@ export default function EditorTitle({
   }, [selectedNoteId, activeNote?.title, activeNote?.updatedAt]);
 
   // Clear autosave on unmount and when switching notes
-  useEffect(() => cancelPendingSave(), [selectedNoteId]);
+  useEffect(() => {
+    debouncedUpdate.cancel();
+
+    return () => {
+      debouncedUpdate.cancel();
+
+      if (selectedNoteId) {
+        debouncedUpdate(selectedNoteId, latestTitleRef.current);
+      }
+    };
+  }, [selectedNoteId, debouncedUpdate]);
 
   return (
     <h1
@@ -93,8 +95,10 @@ export default function EditorTitle({
         e.currentTarget.dataset.empty = String(text.length === 0);
         latestTitleRef.current = text;
 
-        if (selectedNoteId) {
-          updateNoteTitle(selectedNoteId, text);
+        // Write to the note that had focus at blur time, not any newly selected note
+        const currentNoteId = useNotesStore.getState().selectedNoteId;
+        if (currentNoteId) {
+          updateNoteTitle(currentNoteId, text);
         }
       }}
       onKeyDown={onKeyDown}

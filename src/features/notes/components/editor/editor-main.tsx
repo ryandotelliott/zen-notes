@@ -25,10 +25,8 @@ export default function EditorMain({ className }: EditorBodyProps) {
   const spacerRef = useRef<HTMLDivElement | null>(null);
   const titleHeightRef = useRef(0);
 
-  const debouncedUpdate = useDebouncedCallback((content_json: JSONContent, content_text: string) => {
-    if (selectedNoteId) {
-      updateNoteContent(selectedNoteId, content_json, content_text);
-    }
+  const debouncedUpdate = useDebouncedCallback((noteId: string, content_json: JSONContent, content_text: string) => {
+    updateNoteContent(noteId, content_json, content_text);
   }, AUTOSAVE_DEBOUNCE_MS);
 
   const editor = useEditor({
@@ -43,26 +41,31 @@ export default function EditorMain({ className }: EditorBodyProps) {
     onUpdate: ({ editor }) => {
       const content_json = editor.getJSON();
       const content_text = editor.getText();
-      debouncedUpdate(content_json, content_text);
+      const currentNoteId = useNotesStore.getState().selectedNoteId;
+      if (!currentNoteId) return;
+      debouncedUpdate(currentNoteId, content_json, content_text);
     },
   });
 
-  // Update editor content only when the selected note ID changes
+  // Update editor content when the selected note ID changes
   useEffect(() => {
     if (!editor) return;
 
     if (selectedNoteId) {
-      const state = useNotesStore.getState();
-      const note = state.notes.find((n) => n.id === selectedNoteId);
+      const notesState = useNotesStore.getState().notes;
+      const note = notesState.find((n) => n.id === selectedNoteId);
       const content = note?.content_json && Object.keys(note?.content_json).length > 0 ? note?.content_json : '';
       editor.commands.setContent(content, { emitUpdate: false });
     }
 
     return () => {
-      if (!selectedNoteId) return;
+      if (!selectedNoteId || !editor) return;
+
+      // Prevent any pending autosaves before our final update
+      debouncedUpdate.cancel();
       updateNoteContent(selectedNoteId, editor.getJSON(), editor.getText());
     };
-  }, [editor, selectedNoteId, updateNoteContent]);
+  }, [editor, selectedNoteId, updateNoteContent, debouncedUpdate]);
 
   // Keep editor content in sync when Dexie/store updates the active note content
   useEffect(() => {
@@ -77,6 +80,11 @@ export default function EditorMain({ className }: EditorBodyProps) {
       activeNote.content_json && Object.keys(activeNote.content_json).length > 0 ? activeNote.content_json : '';
     editor.commands.setContent(content, { emitUpdate: false });
   }, [editor, activeNote]);
+
+  // Cancel any pending autosave when switching notes to prevent late writes
+  useEffect(() => {
+    debouncedUpdate.cancel();
+  }, [selectedNoteId, debouncedUpdate]);
 
   useEffect(() => {
     return () => {
@@ -122,8 +130,6 @@ export default function EditorMain({ className }: EditorBodyProps) {
     };
   }, []);
 
-  // no-op
-
   return (
     <div className={cn('grid h-full min-h-0 grid-cols-[auto_1fr] gap-x-4', className)}>
       <aside className="col-start-1 flex flex-col">
@@ -146,7 +152,17 @@ export default function EditorMain({ className }: EditorBodyProps) {
             </div>
 
             <div className="min-h-0 flex-1">
-              <EditorContent editor={editor} className="h-full max-w-none" />
+              <EditorContent
+                editor={editor}
+                className="h-full max-w-none"
+                onBlur={() => {
+                  // Get the id from the store directly, to avoid cross-note writes on selection change
+                  const currentNoteId = useNotesStore.getState().selectedNoteId;
+                  if (currentNoteId && editor) {
+                    updateNoteContent(currentNoteId, editor.getJSON(), editor.getText());
+                  }
+                }}
+              />
             </div>
           </div>
         </div>

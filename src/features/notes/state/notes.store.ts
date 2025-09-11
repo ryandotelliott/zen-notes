@@ -127,7 +127,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const [originalHash, nextHash] = await Promise.all([hashJsonStable(originalContent), hashJsonStable(content_json)]);
 
     if (originalHash === nextHash) {
-      console.log("Content hasn't changed, skipping update.");
       return;
     }
 
