@@ -5,7 +5,7 @@ import { LocalNote } from '@/shared/schemas/notes';
 import { CreateNoteDTO, localNotesRepository } from '../data/notes.repo';
 import { create } from 'zustand';
 import { hashJsonStable, hashStringSHA256 } from '@/shared/lib/hashing-utils';
-import { sortArrayByKey as sortObjectArrayByKey } from '@/shared/lib/sorting-utils';
+import { sortObjectArrayByKey } from '@/shared/lib/sorting-utils';
 
 interface NotesState {
   notes: LocalNote[];
@@ -121,7 +121,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
     try {
       const savedNote = await localNotesRepository.add(noteDto);
-
       set((state) => {
         const newNotes = state.notes.map((note) => (note.id === tempId ? savedNote : note));
         return {

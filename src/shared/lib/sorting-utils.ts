@@ -19,7 +19,7 @@ export function sortObjectKeys(obj: Record<string, any>): Record<string, any> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function sortArrayByKey<T extends Record<string, any>>(
+export function sortObjectArrayByKey<T extends Record<string, any>>(
   array: T[],
   key: keyof T,
   direction: 'asc' | 'desc' = 'asc',
