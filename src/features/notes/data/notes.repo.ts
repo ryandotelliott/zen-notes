@@ -8,7 +8,7 @@ export type CreateNoteDTO = Pick<LocalNote, 'title' | 'content_json' | 'content_
 export type UpdateNoteDTO = Partial<Omit<LocalNote, 'id' | 'createdAt' | 'version' | 'baseVersion'>>;
 
 async function getAll(includeDeleted: boolean = false): Promise<LocalNote[]> {
-  let collection = db.notes.orderBy('createdAt').reverse();
+  let collection = db.notes.orderBy(['updatedAt', 'createdAt']).reverse();
   if (!includeDeleted) {
     collection = collection.filter((note) => note.deletedAt === null);
   }
@@ -20,7 +20,7 @@ async function getAll(includeDeleted: boolean = false): Promise<LocalNote[]> {
  */
 function observeAll(includeDeleted: boolean = false): Observable<LocalNote[]> {
   return liveQuery(async () => {
-    let collection = db.notes.orderBy('createdAt').reverse();
+    let collection = db.notes.orderBy(['updatedAt', 'createdAt']).reverse();
     if (!includeDeleted) {
       collection = collection.filter((note) => note.deletedAt === null);
     }
