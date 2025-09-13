@@ -99,34 +99,28 @@ export default function EditorMain({ className }: EditorBodyProps) {
     const spacerEl = spacerRef.current;
     if (!scrollEl || !titleEl || !spacerEl) return;
 
-    const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
-
-    // cache title's top offset inside the scroll container
-    const titleTop = titleEl.offsetTop;
-
-    const measure = () => {
+    const ro = new ResizeObserver(() => {
       const h = titleEl.offsetHeight;
-      titleHeightRef.current = h;
-      const visible = clamp(titleTop + h - scrollEl.scrollTop, 0, h);
-      spacerEl.style.height = `${visible}px`;
-    };
-
-    const onScroll = () => {
-      const h = titleHeightRef.current;
-      const visible = clamp(titleTop + h - scrollEl.scrollTop, 0, h);
-      spacerEl.style.height = `${visible}px`;
-    };
-
-    const ro = new ResizeObserver(measure);
+      spacerEl.style.height = `${h}px`;
+    });
     ro.observe(titleEl);
 
-    measure();
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const h = entry.boundingClientRect.height;
+        spacerEl.style.height = `${h * entry.intersectionRatio}px`;
+      },
+      {
+        root: scrollEl,
+        threshold: Array.from({ length: 101 }, (_, i) => i / 100), // Update every 1%
+      },
+    );
 
-    scrollEl.addEventListener('scroll', onScroll, { passive: true });
+    observer.observe(titleEl);
 
     return () => {
-      scrollEl.removeEventListener('scroll', onScroll);
       ro.disconnect();
+      observer.disconnect();
     };
   }, []);
 
@@ -137,33 +131,31 @@ export default function EditorMain({ className }: EditorBodyProps) {
         <EditorToolbar editor={editor} className="flex-1 rounded px-2" />
       </aside>
 
-      <section className="col-start-2 flex min-h-0 flex-col">
-        <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
-          <div className="flex h-full min-h-0 flex-col">
-            <div ref={titleWrapperRef} id="title" className="shrink-0 py-2">
-              <EditorTitle
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    editor?.chain().focus();
-                  }
-                }}
-              />
-            </div>
+      <section ref={scrollContainerRef} className="col-start-2 min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex h-full min-h-0 flex-col">
+          <div ref={titleWrapperRef} id="title" className="shrink-0 py-2">
+            <EditorTitle
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  editor?.chain().focus();
+                }
+              }}
+            />
+          </div>
 
-            <div className="min-h-0 flex-1">
-              <EditorContent
-                editor={editor}
-                className="h-full max-w-none"
-                onBlur={() => {
-                  // Get the id from the store directly, to avoid cross-note writes on selection change
-                  const currentNoteId = useNotesStore.getState().selectedNoteId;
-                  if (currentNoteId && editor) {
-                    updateNoteContent(currentNoteId, editor.getJSON(), editor.getText());
-                  }
-                }}
-              />
-            </div>
+          <div className="min-h-0 flex-1">
+            <EditorContent
+              editor={editor}
+              className="h-full max-w-none"
+              onBlur={() => {
+                // Get the id from the store directly, to avoid cross-note writes on selection change
+                const currentNoteId = useNotesStore.getState().selectedNoteId;
+                if (currentNoteId && editor) {
+                  updateNoteContent(currentNoteId, editor.getJSON(), editor.getText());
+                }
+              }}
+            />
           </div>
         </div>
       </section>
