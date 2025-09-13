@@ -53,7 +53,7 @@ export default function NotesSidebar() {
             <Plus />
           </SidebarGroupAction>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-y-1">
               {filteredNotes.map((note) => (
                 <NoteSidebarItem
                   key={note.id}
