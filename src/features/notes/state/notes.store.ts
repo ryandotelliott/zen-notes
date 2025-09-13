@@ -5,7 +5,7 @@ import { LocalNote } from '@/shared/schemas/notes';
 import { CreateNoteDTO, localNotesRepository } from '../data/notes.repo';
 import { create } from 'zustand';
 import { hashJsonStable, hashStringSHA256 } from '@/shared/lib/hashing-utils';
-import { sortObjectArrayByKey } from '@/shared/lib/sorting-utils';
+import { sortObjectArrayByKeys } from '@/shared/lib/sorting-utils';
 
 interface NotesState {
   notes: LocalNote[];
@@ -22,6 +22,8 @@ interface NotesState {
 
 let hasRepoSubscription = false;
 
+const sortByMostRecent = (notes: LocalNote[]) => sortObjectArrayByKeys(notes, ['updatedAt', 'createdAt'], 'desc');
+
 /**
  * Selects the next appropriate note when the current selection is no longer available.
  * Attempts to maintain position in the sorted list by selecting the note below,
@@ -34,13 +36,13 @@ const selectNextNote = (
 ): string | null => {
   if (!currentSelectedId) return null;
 
-  const sortedCurrent = sortObjectArrayByKey(currentNotes, 'updatedAt', 'createdAt', 'desc');
+  const sortedCurrent = sortByMostRecent(currentNotes);
   const stillExists = sortedCurrent.some((n) => n.id === currentSelectedId);
 
   if (stillExists) return currentSelectedId;
 
   // Find which note was removed by comparing with previous state
-  const sortedPrevious = sortObjectArrayByKey(previousNotes, 'updatedAt', 'createdAt', 'desc');
+  const sortedPrevious = sortByMostRecent(previousNotes);
   const removedNoteIndex = sortedPrevious.findIndex((note) => !sortedCurrent.some((n) => n.id === note.id));
 
   if (removedNoteIndex === -1) {
@@ -80,7 +82,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         const observable = localNotesRepository.observeAll();
         observable.subscribe({
           next: (emittedNotes) => {
-            const sorted = sortObjectArrayByKey(emittedNotes, 'updatedAt', 'createdAt', 'desc');
+            const sorted = sortByMostRecent(emittedNotes);
             const currentSelected = get().selectedNoteId;
             const previousNotes = get().notes;
             const nextSelected = selectNextNote(previousNotes, emittedNotes, currentSelected);
@@ -124,7 +126,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       set((state) => {
         const newNotes = state.notes.map((note) => (note.id === tempId ? savedNote : note));
         return {
-          notes: sortObjectArrayByKey(newNotes, 'updatedAt', 'createdAt', 'desc'),
+          notes: sortByMostRecent(newNotes),
           selectedNoteId: savedNote.id,
         };
       });
@@ -176,7 +178,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       );
 
       return {
-        notes: sortObjectArrayByKey(newNotes, 'updatedAt', 'createdAt', 'desc'),
+        notes: sortByMostRecent(newNotes),
       };
     });
 
@@ -190,7 +192,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         const newNotes = state.notes.map((note) => (note.id === id ? updatedNote : note));
 
         return {
-          notes: sortObjectArrayByKey(newNotes, 'updatedAt', 'createdAt', 'desc'),
+          notes: sortByMostRecent(newNotes),
           error: null,
         };
       });
@@ -209,7 +211,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         );
         return {
           error: 'Could not save the note content. Please try again.',
-          notes: sortObjectArrayByKey(newNotes, 'updatedAt', 'createdAt', 'desc'),
+          notes: sortByMostRecent(newNotes),
         };
       });
     }
@@ -236,7 +238,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     set((state) => {
       const newNotes = state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: new Date() } : note));
       return {
-        notes: sortObjectArrayByKey(newNotes, 'updatedAt', 'createdAt', 'desc'),
+        notes: sortByMostRecent(newNotes),
       };
     });
 
@@ -248,7 +250,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
           note.id === id ? { ...note, title: updatedNote.title, updatedAt: updatedNote.updatedAt } : note,
         );
         return {
-          notes: sortObjectArrayByKey(newNotes, 'updatedAt', 'createdAt', 'desc'),
+          notes: sortByMostRecent(newNotes),
           error: null,
         };
       });
@@ -260,7 +262,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         );
 
         return {
-          notes: sortObjectArrayByKey(newNotes, 'updatedAt', 'createdAt', 'desc'),
+          notes: sortByMostRecent(newNotes),
           error: 'Could not save the note title. Please try again.',
         };
       });
@@ -274,7 +276,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const nextSelected = selectNextNote(previousNotes, filteredNotes, currentSelected);
 
     set({
-      notes: sortObjectArrayByKey(filteredNotes, 'updatedAt', 'createdAt', 'desc'),
+      notes: sortByMostRecent(filteredNotes),
       selectedNoteId: nextSelected,
       error: null,
     });

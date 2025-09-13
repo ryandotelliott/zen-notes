@@ -23,7 +23,6 @@ export default function EditorMain({ className }: EditorBodyProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const titleWrapperRef = useRef<HTMLDivElement | null>(null);
   const spacerRef = useRef<HTMLDivElement | null>(null);
-  const titleHeightRef = useRef(0);
 
   const debouncedUpdate = useDebouncedCallback((noteId: string, content_json: JSONContent, content_text: string) => {
     updateNoteContent(noteId, content_json, content_text);
@@ -59,11 +58,11 @@ export default function EditorMain({ className }: EditorBodyProps) {
     }
 
     return () => {
+      // Prevent any pending autosaves before our final update
       debouncedUpdate.cancel();
 
       if (!selectedNoteId || !editor) return;
 
-      // Prevent any pending autosaves before our final update
       updateNoteContent(selectedNoteId, editor.getJSON(), editor.getText());
     };
   }, [editor, selectedNoteId, updateNoteContent, debouncedUpdate]);
