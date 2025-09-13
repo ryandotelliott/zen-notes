@@ -22,6 +22,44 @@ interface NotesState {
 
 let hasRepoSubscription = false;
 
+/**
+ * Selects the next appropriate note when the current selection is no longer available.
+ * Attempts to maintain position in the sorted list by selecting the note below,
+ * then above, then first note as fallback.
+ */
+const selectNextNote = (
+  previousNotes: LocalNote[],
+  currentNotes: LocalNote[],
+  currentSelectedId: string | null,
+): string | null => {
+  if (!currentSelectedId) return null;
+
+  const sortedCurrent = sortObjectArrayByKey(currentNotes, 'updatedAt', 'desc');
+  const stillExists = sortedCurrent.some((n) => n.id === currentSelectedId);
+
+  if (stillExists) return currentSelectedId;
+
+  // Find which note was removed by comparing with previous state
+  const sortedPrevious = sortObjectArrayByKey(previousNotes, 'updatedAt', 'desc');
+  const removedNoteIndex = sortedPrevious.findIndex((note) => !sortedCurrent.some((n) => n.id === note.id));
+
+  if (removedNoteIndex === -1) {
+    // No note was removed, just return first note or null
+    return sortedCurrent[0]?.id ?? null;
+  }
+
+  // Try to select the note at the same position (note below the removed one)
+  const noteBelow = sortedCurrent[removedNoteIndex];
+  if (noteBelow) return noteBelow.id;
+
+  // If no note below, try the note above
+  const noteAbove = removedNoteIndex > 0 ? sortedCurrent[removedNoteIndex - 1] : null;
+  if (noteAbove) return noteAbove.id;
+
+  // Final fallback to first note
+  return sortedCurrent[0]?.id ?? null;
+};
+
 export const useNotesStore = create<NotesState>((set, get) => ({
   notes: [],
   selectedNoteId: null,
@@ -44,8 +82,9 @@ export const useNotesStore = create<NotesState>((set, get) => ({
           next: (emittedNotes) => {
             const sorted = sortObjectArrayByKey(emittedNotes, 'updatedAt', 'desc');
             const currentSelected = get().selectedNoteId;
-            const stillExists = currentSelected ? sorted.some((n) => n.id === currentSelected) : false;
-            const nextSelected = stillExists ? currentSelected : (sorted[0]?.id ?? null);
+            const previousNotes = get().notes;
+            const nextSelected = selectNextNote(previousNotes, emittedNotes, currentSelected);
+
             set({ notes: sorted, selectedNoteId: nextSelected, isLoading: false });
           },
           error: (e) => {
@@ -230,17 +269,27 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   },
 
   deleteNote: async (id: string) => {
-    set((state) => ({
-      notes: state.notes.filter((note) => note.id !== id),
-      selectedNoteId: state.selectedNoteId === id ? null : state.selectedNoteId,
+    const previousNotes = get().notes;
+    const filteredNotes = previousNotes.filter((note) => note.id !== id);
+    const currentSelected = get().selectedNoteId;
+    const nextSelected = selectNextNote(previousNotes, filteredNotes, currentSelected);
+
+    set({
+      notes: sortObjectArrayByKey(filteredNotes, 'updatedAt', 'desc'),
+      selectedNoteId: nextSelected,
       error: null,
-    }));
+    });
 
     try {
       await localNotesRepository.remove(id);
     } catch (err) {
       console.error('Failed to delete note from IndexedDB:', err);
-      set((state) => ({ error: 'Could not delete the note. Please try again.', notes: state.notes }));
+      // Rollback the optimistic update
+      set((state) => ({
+        error: 'Could not delete the note. Please try again.',
+        notes: previousNotes,
+        selectedNoteId: currentSelected,
+      }));
     }
   },
 }));

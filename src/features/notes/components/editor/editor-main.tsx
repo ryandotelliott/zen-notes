@@ -59,10 +59,11 @@ export default function EditorMain({ className }: EditorBodyProps) {
     }
 
     return () => {
+      debouncedUpdate.cancel();
+
       if (!selectedNoteId || !editor) return;
 
       // Prevent any pending autosaves before our final update
-      debouncedUpdate.cancel();
       updateNoteContent(selectedNoteId, editor.getJSON(), editor.getText());
     };
   }, [editor, selectedNoteId, updateNoteContent, debouncedUpdate]);
