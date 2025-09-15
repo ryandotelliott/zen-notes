@@ -288,21 +288,16 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }
     const originalPinned = originalNote.pinned;
     const originalUpdatedAt = originalNote.updatedAt;
-    const originalListOrderSeq = originalNote.listOrderSeq;
-
-    const nextListOrderSeq = await localNotesRepository.reserveListOrderSeq();
 
     set((state) => {
-      const newNotes = state.notes.map((note) =>
-        note.id === id ? { ...note, pinned, updatedAt: new Date(), listOrderSeq: nextListOrderSeq } : note,
-      );
+      const newNotes = state.notes.map((note) => (note.id === id ? { ...note, pinned, updatedAt: new Date() } : note));
       return {
         notes: sortByListOrder(newNotes),
       };
     });
 
     try {
-      await localNotesRepository.update(id, { pinned, listOrderSeq: nextListOrderSeq });
+      await localNotesRepository.update(id, { pinned });
 
       set({
         error: null,
@@ -311,9 +306,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       console.error('Failed to update note pinned in IndexedDB:', err);
       set((state) => {
         const newNotes = state.notes.map((note) =>
-          note.id === id
-            ? { ...note, pinned: originalPinned, updatedAt: originalUpdatedAt, listOrderSeq: originalListOrderSeq }
-            : note,
+          note.id === id ? { ...note, pinned: originalPinned, updatedAt: originalUpdatedAt } : note,
         );
         return {
           notes: sortByListOrder(newNotes),
