@@ -1,7 +1,7 @@
 import { JSONContent } from '@tiptap/react';
 import { LocalNote } from '@/shared/schemas/notes';
 import { CreateNoteDTO, localNotesRepository } from '@/features/notes/data/notes.repo';
-import { create } from 'zustand';
+import { createWithEqualityFn } from 'zustand/traditional';
 import { debounce, type DebouncedFunction } from '@/shared/lib/debounce';
 import { hashJsonStable, hashStringSHA256 } from '@/shared/lib/hashing-utils';
 import { sortObjectArrayByKeys } from '@/shared/lib/sorting-utils';
@@ -67,7 +67,7 @@ const selectNextNote = (
   return sortedCurrent[0]?.id ?? null;
 };
 
-export const useNotesStore = create<NotesState>((set, get) => ({
+export const useNotesStore = createWithEqualityFn<NotesState>((set, get) => ({
   notes: [],
   selectedNoteId: null,
   isLoading: true,
@@ -180,6 +180,20 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       return;
     }
 
+    // Bump listOrderSeq if this note isn't already the most recent - use top note since notes are always sorted by listOrderSeq
+    const currentTopSeq = get().notes[0]?.listOrderSeq ?? 0;
+    const shouldBumpSeq = originalListOrderSeq < currentTopSeq;
+    let optimisticSeq = originalListOrderSeq;
+    if (shouldBumpSeq) {
+      try {
+        // Reserve to keep Dexie's meta counter in sync immediately
+        optimisticSeq = await localNotesRepository.reserveListOrderSeq();
+      } catch {
+        // Fallback if reservation fails
+        optimisticSeq = currentTopSeq + 1;
+      }
+    }
+
     set((state) => {
       const newNotes = state.notes.map((note) =>
         note.id === id
@@ -189,22 +203,28 @@ export const useNotesStore = create<NotesState>((set, get) => ({
               contentText,
               previewText: computePreviewText(contentText),
               updatedAt: new Date(),
+              listOrderSeq: optimisticSeq,
             }
           : note,
       );
       return { notes: sortByListOrder(newNotes) };
     });
 
-    const DEBOUNCE_MS_CONTENT = 1000;
+    const DEBOUNCE_MS_CONTENT = 500;
     if (!contentDebouncers.has(id)) {
       const debouncedSave = debounce(async (json: object, text: string) => {
         try {
-          const nextListOrderSeq = await localNotesRepository.reserveListOrderSeq();
+          // Reuse optimistic seq if we already bumped; else reserve now
+          const latestNote = get().notes.find((n) => n.id === id);
+          const latestSeq = latestNote?.listOrderSeq ?? originalListOrderSeq;
+          const seqToPersist =
+            latestSeq > originalListOrderSeq ? latestSeq : await localNotesRepository.reserveListOrderSeq();
+
           await localNotesRepository.update(id, {
             contentJson: json,
             contentText: text,
             previewText: computePreviewText(text),
-            listOrderSeq: nextListOrderSeq,
+            listOrderSeq: seqToPersist,
           });
           set({ error: null });
         } catch (err) {
@@ -250,8 +270,24 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       return;
     }
 
+    // Bump listOrderSeq if this note isn't already the most recent - use top note since notes are always sorted by listOrderSeq
+    const currentTopSeq = get().notes[0]?.listOrderSeq ?? 0;
+    const shouldBumpSeq = originalListOrderSeq < currentTopSeq;
+    let optimisticSeq = originalListOrderSeq;
+    if (shouldBumpSeq) {
+      try {
+        // Reserve to keep Dexie's meta counter in sync immediately
+        optimisticSeq = await localNotesRepository.reserveListOrderSeq();
+      } catch {
+        // Fallback if reservation fails
+        optimisticSeq = currentTopSeq + 1;
+      }
+    }
+
     set((state) => {
-      const newNotes = state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: new Date() } : note));
+      const newNotes = state.notes.map((note) =>
+        note.id === id ? { ...note, title, updatedAt: new Date(), listOrderSeq: optimisticSeq } : note,
+      );
       return { notes: sortByListOrder(newNotes) };
     });
 
@@ -259,8 +295,13 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     if (!titleDebouncers.has(id)) {
       const debouncedSave = debounce(async (t: string) => {
         try {
-          const nextListOrderSeq = await localNotesRepository.reserveListOrderSeq();
-          await localNotesRepository.update(id, { title: t, listOrderSeq: nextListOrderSeq });
+          // Reuse optimistic seq if we already bumped; else reserve now
+          const latestNote = get().notes.find((n) => n.id === id);
+          const latestSeq = latestNote?.listOrderSeq ?? originalListOrderSeq;
+          const seqToPersist =
+            latestSeq > originalListOrderSeq ? latestSeq : await localNotesRepository.reserveListOrderSeq();
+
+          await localNotesRepository.update(id, { title: t, listOrderSeq: seqToPersist });
           set({ error: null });
         } catch (err) {
           console.error('Failed to persist note title in IndexedDB (debounced):', err);
