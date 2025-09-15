@@ -35,7 +35,7 @@ const apiErr = (overrides = {}): ApiResult<NoteDTO> => ({
 
 describe('pushLocalChanges', () => {
   let apiCreateSpy: MockInstance<typeof notesApi.create>;
-  let apiUpdateSpy: MockInstance<typeof notesApi.update>;
+  let apiPatchSpy: MockInstance<typeof notesApi.patch>;
   let apiRemoveSpy: MockInstance<typeof notesApi.remove>;
   let lnGetUnsyncedNotesSpy: MockInstance<typeof localNotesRepository.getUnsyncedNotes>;
   let lnEraseSpy: MockInstance<typeof localNotesRepository.erase>;
@@ -43,7 +43,7 @@ describe('pushLocalChanges', () => {
 
   beforeEach(() => {
     apiCreateSpy = vi.spyOn(notesApi, 'create'); // set in each test
-    apiUpdateSpy = vi.spyOn(notesApi, 'update'); // set in each test
+    apiPatchSpy = vi.spyOn(notesApi, 'patch'); // set in each test
     apiRemoveSpy = vi.spyOn(notesApi, 'remove'); // set in each test
     lnGetUnsyncedNotesSpy = vi.spyOn(localNotesRepository, 'getUnsyncedNotes'); // set in each test
     lnEraseSpy = vi.spyOn(localNotesRepository, 'erase'); // set in each test
@@ -69,6 +69,7 @@ describe('pushLocalChanges', () => {
       title: local.title,
       content_text: local.content_text,
       content_json: local.content_json,
+      listOrderSeq: local.listOrderSeq,
     });
     expect(lnUpdateFromServerSpy).toHaveBeenCalledWith(remote);
   });
@@ -78,15 +79,16 @@ describe('pushLocalChanges', () => {
     const remote = createMockNoteDTO({ id: local.id, version: 3 });
 
     lnGetUnsyncedNotesSpy.mockResolvedValue([local]);
-    apiUpdateSpy.mockResolvedValue(apiOk({ data: remote }));
+    apiPatchSpy.mockResolvedValue(apiOk({ data: remote }));
     lnUpdateFromServerSpy.mockResolvedValue();
 
     const res = await __ops.pushLocalChanges();
     expect(res).toEqual({ success: true, pushed: 1, pulled: 0, conflicts: 0 });
-    expect(apiUpdateSpy).toHaveBeenCalledWith(local.id, {
+    expect(apiPatchSpy).toHaveBeenCalledWith(local.id, {
       title: local.title,
       content_text: local.content_text,
       content_json: local.content_json,
+      listOrderSeq: local.listOrderSeq,
       baseVersion: 2,
     });
     expect(lnUpdateFromServerSpy).toHaveBeenCalledWith(remote);
@@ -131,23 +133,25 @@ describe('pushLocalChanges', () => {
     const afterRetry = createMockNoteDTO({ id: local.id, version: 6, updatedAt: addSecs(now, 3) });
 
     lnGetUnsyncedNotesSpy.mockResolvedValue([local]);
-    apiUpdateSpy
+    apiPatchSpy
       .mockResolvedValueOnce(apiErr({ code: 'conflict', status: 409, data: serverNote })) // first call
       .mockResolvedValueOnce(apiOk({ data: afterRetry })); // after retry
     lnUpdateFromServerSpy.mockResolvedValue();
 
     const res = await __ops.pushLocalChanges();
     expect(res).toEqual({ success: true, pushed: 1, pulled: 0, conflicts: 1 });
-    expect(apiUpdateSpy).toHaveBeenNthCalledWith(1, local.id, {
+    expect(apiPatchSpy).toHaveBeenNthCalledWith(1, local.id, {
       title: local.title,
       content_text: local.content_text,
       content_json: local.content_json,
+      listOrderSeq: local.listOrderSeq,
       baseVersion: 2,
     });
-    expect(apiUpdateSpy).toHaveBeenNthCalledWith(2, local.id, {
+    expect(apiPatchSpy).toHaveBeenNthCalledWith(2, local.id, {
       title: local.title,
       content_text: local.content_text,
       content_json: local.content_json,
+      listOrderSeq: local.listOrderSeq,
       baseVersion: serverNote.version,
     });
     expect(lnUpdateFromServerSpy).toHaveBeenCalledWith(afterRetry);
@@ -159,9 +163,9 @@ describe('pushLocalChanges', () => {
       baseVersion: 2,
       deletedAt: addSecs(now, 2),
       syncStatus: 'pending',
-      updatedAt: now,
+      updatedAt: addSecs(now, 2),
     });
-    const serverNote = createMockNoteDTO({ id: local.id, version: 7, updatedAt: addSecs(now, 1), deletedAt: null });
+    const serverNote = createMockNoteDTO({ id: local.id, version: 7, updatedAt: now, deletedAt: null });
 
     lnGetUnsyncedNotesSpy.mockResolvedValue([local]);
     apiRemoveSpy
@@ -182,7 +186,7 @@ describe('pushLocalChanges', () => {
     const serverNote = createMockNoteDTO({ id: local.id, version: 7, updatedAt: addSecs(now, 2) });
 
     lnGetUnsyncedNotesSpy.mockResolvedValue([local]);
-    apiUpdateSpy.mockResolvedValue(apiErr({ code: 'conflict', status: 409, data: serverNote }));
+    apiPatchSpy.mockResolvedValue(apiErr({ code: 'conflict', status: 409, data: serverNote }));
     lnUpdateFromServerSpy.mockResolvedValue();
 
     const res = await __ops.pushLocalChanges();
@@ -195,13 +199,13 @@ describe('pushLocalChanges', () => {
     const remote = createMockNoteDTO({ id: local.id, version: 1 });
 
     lnGetUnsyncedNotesSpy.mockResolvedValue([local]);
-    apiUpdateSpy.mockResolvedValue(apiErr({ code: 'not_found', status: 404 }));
+    apiPatchSpy.mockResolvedValue(apiErr({ code: 'not_found', status: 404 }));
     apiCreateSpy.mockResolvedValue(apiOk({ data: remote }));
     lnUpdateFromServerSpy.mockResolvedValue();
 
     const res = await __ops.pushLocalChanges();
     expect(res).toEqual({ success: true, pushed: 1, pulled: 0, conflicts: 0 });
-    expect(apiUpdateSpy).toHaveBeenCalled();
+    expect(apiPatchSpy).toHaveBeenCalled();
     expect(apiCreateSpy).toHaveBeenCalled();
     expect(lnUpdateFromServerSpy).toHaveBeenCalledWith(remote);
   });
@@ -232,7 +236,7 @@ describe('pushLocalChanges', () => {
     const local = createMockLocalNote({ baseVersion: 4, deletedAt: null, syncStatus: 'pending' });
 
     lnGetUnsyncedNotesSpy.mockResolvedValue([local]);
-    apiUpdateSpy.mockResolvedValue(apiErr({ code: 'server', status: 500 }));
+    apiPatchSpy.mockResolvedValue(apiErr({ code: 'server', status: 500 }));
 
     const res = await __ops.pushLocalChanges();
     expect(res).toEqual({ success: true, pushed: 0, pulled: 0, conflicts: 0 });

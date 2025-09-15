@@ -35,7 +35,7 @@ describe('getLWWResolution', () => {
 
   it('returns "local" when local is deleted but has newer deletedAt than remote updatedAt', () => {
     const local = createMockLocalNote({
-      updatedAt: DEFAULT_NOTE_DATE,
+      updatedAt: addSecs(DEFAULT_NOTE_DATE, 1),
       deletedAt: addSecs(DEFAULT_NOTE_DATE, 1),
     });
     const remote = createMockNoteDTO({
@@ -52,7 +52,7 @@ describe('getLWWResolution', () => {
       deletedAt: null,
     });
     const remote = createMockNoteDTO({
-      updatedAt: DEFAULT_NOTE_DATE,
+      updatedAt: addSecs(DEFAULT_NOTE_DATE, 1),
       deletedAt: addSecs(DEFAULT_NOTE_DATE, 1),
     });
 
@@ -61,7 +61,7 @@ describe('getLWWResolution', () => {
 
   it('returns "local" when both deleted but local deletedAt is newer', () => {
     const local = createMockLocalNote({
-      updatedAt: DEFAULT_NOTE_DATE,
+      updatedAt: addSecs(DEFAULT_NOTE_DATE, 1),
       deletedAt: addSecs(DEFAULT_NOTE_DATE, 1),
     });
     const remote = createMockNoteDTO({
@@ -78,7 +78,7 @@ describe('getLWWResolution', () => {
       deletedAt: DEFAULT_NOTE_DATE,
     });
     const remote = createMockNoteDTO({
-      updatedAt: DEFAULT_NOTE_DATE,
+      updatedAt: addSecs(DEFAULT_NOTE_DATE, 1),
       deletedAt: addSecs(DEFAULT_NOTE_DATE, 1),
     });
 
@@ -104,7 +104,7 @@ describe('getLWWResolution', () => {
       deletedAt: null,
     });
     const remote = createMockNoteDTO({
-      updatedAt: DEFAULT_NOTE_DATE,
+      updatedAt: addSecs(DEFAULT_NOTE_DATE, 1),
       deletedAt: addSecs(DEFAULT_NOTE_DATE, 1),
     });
 
