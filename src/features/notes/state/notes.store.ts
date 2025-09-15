@@ -1,5 +1,3 @@
-'use client';
-
 import { JSONContent } from '@tiptap/react';
 import { LocalNote } from '@/shared/schemas/notes';
 import { CreateNoteDTO, localNotesRepository } from '@/features/notes/data/notes.repo';
@@ -140,7 +138,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         };
       });
     } catch (err) {
-      // On failure, roll back the state and show an error
       console.error('Failed to save note:', err);
       set((state) => ({
         error: 'Could not save the note. Please try again.',
@@ -183,7 +180,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       return;
     }
 
-    // Immediate in-memory update for snappy typing UX. Do NOT bump listOrderSeq here.
     set((state) => {
       const newNotes = state.notes.map((note) =>
         note.id === id
@@ -199,9 +195,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       return { notes: sortByListOrder(newNotes) };
     });
 
-    // Debounced persistence to IndexedDB; bump listOrderSeq only on save
     const DEBOUNCE_MS_CONTENT = 1000;
-    // Lazily create per-note debouncer
     if (!contentDebouncers.has(id)) {
       const debouncedSave = debounce(async (json: object, text: string) => {
         try {
@@ -235,7 +229,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       contentDebouncers.set(id, debouncedSave);
     }
 
-    contentDebouncers.get(id)!(contentJson, contentText);
+    contentDebouncers.get(id)?.(contentJson, contentText);
   },
 
   updateNoteTitle: async (id: string, title: string) => {
@@ -256,13 +250,11 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       return;
     }
 
-    // Immediate in-memory update without changing list order
     set((state) => {
       const newNotes = state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: new Date() } : note));
       return { notes: sortByListOrder(newNotes) };
     });
 
-    // Debounced persistence to IndexedDB; bump listOrderSeq only on save
     const DEBOUNCE_MS_TITLE = 500;
     if (!titleDebouncers.has(id)) {
       const debouncedSave = debounce(async (t: string) => {
@@ -285,7 +277,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       titleDebouncers.set(id, debouncedSave);
     }
 
-    titleDebouncers.get(id)!(title);
+    titleDebouncers.get(id)?.(title);
   },
 
   updateNotePinned: async (id: string, pinned: boolean) => {
@@ -339,7 +331,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       await localNotesRepository.remove(id);
     } catch (err) {
       console.error('Failed to delete note from IndexedDB:', err);
-      // Rollback the optimistic update
       set({
         error: 'Could not delete the note. Please try again.',
         notes: previousNotes,
