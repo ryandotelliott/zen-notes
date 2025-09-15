@@ -2,11 +2,12 @@
 
 import { JSONContent } from '@tiptap/react';
 import { LocalNote } from '@/shared/schemas/notes';
-import { CreateNoteDTO, localNotesRepository } from '../data/notes.repo';
+import { CreateNoteDTO, localNotesRepository } from '@/features/notes/data/notes.repo';
 import { create } from 'zustand';
+import { debounce, type DebouncedFunction } from '@/shared/lib/debounce';
 import { hashJsonStable, hashStringSHA256 } from '@/shared/lib/hashing-utils';
 import { sortObjectArrayByKeys } from '@/shared/lib/sorting-utils';
-import { computePreviewText } from '../lib/content-utils';
+import { computePreviewText } from '@/features/notes/lib/content-utils';
 
 interface NotesState {
   notes: LocalNote[];
@@ -23,6 +24,10 @@ interface NotesState {
 }
 
 let hasRepoSubscription = false;
+
+// Per-note debouncers to coalesce rapid edits before persisting to IndexedDB
+const contentDebouncers = new Map<string, DebouncedFunction<(json: object, text: string) => void>>();
+const titleDebouncers = new Map<string, DebouncedFunction<(t: string) => void>>();
 
 const sortByListOrder = (notes: LocalNote[]) => sortObjectArrayByKeys(notes, ['listOrderSeq', 'createdAt'], 'desc');
 
@@ -172,14 +177,13 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const originalContentText = originalNote.contentText;
     const originalUpdatedAt = originalNote.updatedAt;
     const originalListOrderSeq = originalNote.listOrderSeq;
-
-    const nextListOrderSeq = await localNotesRepository.reserveListOrderSeq();
     const [originalHash, nextHash] = await Promise.all([hashJsonStable(originalContent), hashJsonStable(contentJson)]);
 
     if (originalHash === nextHash) {
       return;
     }
 
+    // Immediate in-memory update for snappy typing UX. Do NOT bump listOrderSeq here.
     set((state) => {
       const newNotes = state.notes.map((note) =>
         note.id === id
@@ -189,50 +193,49 @@ export const useNotesStore = create<NotesState>((set, get) => ({
               contentText,
               previewText: computePreviewText(contentText),
               updatedAt: new Date(),
-              listOrderSeq: nextListOrderSeq,
             }
           : note,
       );
-
-      return {
-        notes: sortByListOrder(newNotes),
-      };
+      return { notes: sortByListOrder(newNotes) };
     });
 
-    try {
-      await localNotesRepository.update(id, {
-        contentJson,
-        contentText,
-        previewText: computePreviewText(contentText),
-        listOrderSeq: nextListOrderSeq,
-      });
-
-      set({
-        error: null,
-      });
-    } catch (err) {
-      console.error('Failed to update note content in IndexedDB:', err);
-
-      set((state) => {
-        const newNotes = state.notes.map((note) =>
-          note.id === id
-            ? {
-                ...note,
-                contentJson: originalContent,
-                contentText: originalContentText,
-                previewText: computePreviewText(originalContentText),
-                updatedAt: originalUpdatedAt,
-                listOrderSeq: originalListOrderSeq,
-                baseVersion: originalNote.baseVersion,
-              }
-            : note,
-        );
-        return {
-          notes: sortByListOrder(newNotes),
-          error: 'Could not save the note content. Please try again.',
-        };
-      });
+    // Debounced persistence to IndexedDB; bump listOrderSeq only on save
+    const DEBOUNCE_MS_CONTENT = 1000;
+    // Lazily create per-note debouncer
+    if (!contentDebouncers.has(id)) {
+      const debouncedSave = debounce(async (json: object, text: string) => {
+        try {
+          const nextListOrderSeq = await localNotesRepository.reserveListOrderSeq();
+          await localNotesRepository.update(id, {
+            contentJson: json,
+            contentText: text,
+            previewText: computePreviewText(text),
+            listOrderSeq: nextListOrderSeq,
+          });
+          set({ error: null });
+        } catch (err) {
+          console.error('Failed to persist note content in IndexedDB (debounced):', err);
+          set((state) => ({
+            error: 'Could not save the note content. Please try again.',
+            notes: state.notes.map((note) =>
+              note.id === id
+                ? {
+                    ...note,
+                    contentJson: originalContent,
+                    contentText: originalContentText,
+                    previewText: computePreviewText(originalContentText),
+                    updatedAt: originalUpdatedAt,
+                    listOrderSeq: originalListOrderSeq,
+                  }
+                : note,
+            ),
+          }));
+        }
+      }, DEBOUNCE_MS_CONTENT);
+      contentDebouncers.set(id, debouncedSave);
     }
+
+    contentDebouncers.get(id)!(contentJson, contentText);
   },
 
   updateNoteTitle: async (id: string, title: string) => {
@@ -243,8 +246,6 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const originalTitle = originalNote.title;
     const originalUpdatedAt = originalNote.updatedAt;
     const originalListOrderSeq = originalNote.listOrderSeq;
-
-    const nextListOrderSeq = await localNotesRepository.reserveListOrderSeq();
     const [originalTitleHash, nextTitleHash] = await Promise.all([
       hashStringSHA256(originalTitle ?? ''),
       hashStringSHA256(title ?? ''),
@@ -255,35 +256,36 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       return;
     }
 
+    // Immediate in-memory update without changing list order
     set((state) => {
-      const newNotes = state.notes.map((note) =>
-        note.id === id ? { ...note, title, updatedAt: new Date(), listOrderSeq: nextListOrderSeq } : note,
-      );
-      return {
-        notes: sortByListOrder(newNotes),
-      };
+      const newNotes = state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: new Date() } : note));
+      return { notes: sortByListOrder(newNotes) };
     });
 
-    try {
-      await localNotesRepository.update(id, { title, listOrderSeq: nextListOrderSeq });
-      set({
-        error: null,
-      });
-    } catch (err) {
-      console.error('Failed to update note title in IndexedDB:', err);
-      set((state) => {
-        const newNotes = state.notes.map((note) =>
-          note.id === id
-            ? { ...note, title: originalTitle, updatedAt: originalUpdatedAt, listOrderSeq: originalListOrderSeq }
-            : note,
-        );
-
-        return {
-          notes: sortByListOrder(newNotes),
-          error: 'Could not save the note title. Please try again.',
-        };
-      });
+    // Debounced persistence to IndexedDB; bump listOrderSeq only on save
+    const DEBOUNCE_MS_TITLE = 500;
+    if (!titleDebouncers.has(id)) {
+      const debouncedSave = debounce(async (t: string) => {
+        try {
+          const nextListOrderSeq = await localNotesRepository.reserveListOrderSeq();
+          await localNotesRepository.update(id, { title: t, listOrderSeq: nextListOrderSeq });
+          set({ error: null });
+        } catch (err) {
+          console.error('Failed to persist note title in IndexedDB (debounced):', err);
+          set((state) => ({
+            error: 'Could not save the note title. Please try again.',
+            notes: state.notes.map((note) =>
+              note.id === id
+                ? { ...note, title: originalTitle, updatedAt: originalUpdatedAt, listOrderSeq: originalListOrderSeq }
+                : note,
+            ),
+          }));
+        }
+      }, DEBOUNCE_MS_TITLE);
+      titleDebouncers.set(id, debouncedSave);
     }
+
+    titleDebouncers.get(id)!(title);
   },
 
   updateNotePinned: async (id: string, pinned: boolean) => {
@@ -343,6 +345,16 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         notes: previousNotes,
         selectedNoteId: currentSelected,
       });
+    }
+
+    // Cancel any pending debounced saves for this note
+    if (contentDebouncers.has(id)) {
+      contentDebouncers.get(id)!.cancel();
+      contentDebouncers.delete(id);
+    }
+    if (titleDebouncers.has(id)) {
+      titleDebouncers.get(id)!.cancel();
+      titleDebouncers.delete(id);
     }
   },
 }));

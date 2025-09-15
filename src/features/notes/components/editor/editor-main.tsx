@@ -11,13 +11,10 @@ import { cn } from '@/shared/lib/ui-utils';
 import EditorToolbar from './editor-toolbar';
 import EditorTitle from './editor-title';
 import { useNotesStore } from '@/features/notes/state/notes.store';
-import { useDebouncedCallback } from '@/shared/hooks/use-debounced-callback';
 
 type EditorBodyProps = {
   className?: string;
 };
-
-const AUTOSAVE_DEBOUNCE_MS = 2000;
 
 export default function EditorMain({ className }: EditorBodyProps) {
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId);
@@ -27,10 +24,6 @@ export default function EditorMain({ className }: EditorBodyProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const titleWrapperRef = useRef<HTMLDivElement | null>(null);
   const spacerRef = useRef<HTMLDivElement | null>(null);
-
-  const debouncedUpdate = useDebouncedCallback((noteId: string, contentJson: JSONContent, contentText: string) => {
-    updateNoteContent(noteId, contentJson, contentText);
-  }, AUTOSAVE_DEBOUNCE_MS);
 
   const lowlight = createLowlight(all);
 
@@ -56,7 +49,7 @@ export default function EditorMain({ className }: EditorBodyProps) {
       const contentText = editor.getText();
       const currentNoteId = useNotesStore.getState().selectedNoteId;
       if (!currentNoteId) return;
-      debouncedUpdate(currentNoteId, contentJson, contentText);
+      updateNoteContent(currentNoteId, contentJson, contentText);
     },
   });
 
@@ -72,14 +65,11 @@ export default function EditorMain({ className }: EditorBodyProps) {
     }
 
     return () => {
-      // Prevent any pending autosaves before our final update
-      debouncedUpdate.cancel();
-
       if (!selectedNoteId || !editor) return;
 
       updateNoteContent(selectedNoteId, editor.getJSON(), editor.getText());
     };
-  }, [editor, selectedNoteId, updateNoteContent, debouncedUpdate]);
+  }, [editor, selectedNoteId, updateNoteContent]);
 
   // Keep editor content in sync when Dexie/store updates the active note content
   useEffect(() => {
@@ -94,11 +84,6 @@ export default function EditorMain({ className }: EditorBodyProps) {
       activeNote.contentJson && Object.keys(activeNote.contentJson).length > 0 ? activeNote.contentJson : '';
     editor.commands.setContent(content, { emitUpdate: false });
   }, [editor, activeNote]);
-
-  // Cancel any pending autosave when switching notes to prevent late writes
-  useEffect(() => {
-    debouncedUpdate.cancel();
-  }, [selectedNoteId, debouncedUpdate]);
 
   useEffect(() => {
     return () => {
