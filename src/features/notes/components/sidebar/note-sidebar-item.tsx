@@ -6,9 +6,15 @@ import { SidebarMenuAction, SidebarMenuButton, SidebarMenuItem } from '@/shared/
 import { Input } from '@/shared/components/ui/input';
 import { BaseNote } from '@/shared/schemas/notes';
 import { DropdownMenu } from '@/shared/components/ui/dropdown-menu';
-import { Edit, MoreHorizontal, Pin, Trash2 } from 'lucide-react';
+import { Edit, MoreHorizontal, Pin, TextCursor, Trash2 } from 'lucide-react';
 import { cn } from '@/shared/lib/ui-utils';
 import { useNotesStore } from '@/features/notes/state/notes.store';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/shared/components/ui/context-menu';
 
 type NoteFields = Pick<BaseNote, 'id' | 'title' | 'pinned'>;
 
@@ -22,7 +28,6 @@ interface Props extends NoteFields {
 export default function NoteSidebarItem({ id, title, pinned, isEditing, setIsEditing, isActive, className }: Props) {
   const [editingTitle, setEditingTitle] = useState<string>(title);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const selectNote = useNotesStore((s) => s.selectNote);
@@ -30,34 +35,55 @@ export default function NoteSidebarItem({ id, title, pinned, isEditing, setIsEdi
   const deleteNote = useNotesStore((s) => s.deleteNote);
   const pinNote = useNotesStore((s) => s.updateNotePinned);
 
-  const handleSelect = useCallback(() => {
-    selectNote(id);
-  }, [id, selectNote]);
-
-  const handleRename = useCallback(
-    (title: string) => {
-      setIsEditing(false);
-      renameNote(id, title);
-    },
-    [id, renameNote, setIsEditing],
-  );
-
-  const handleDelete = useCallback(() => {
-    deleteNote(id);
-  }, [id, deleteNote]);
-
-  const handlePin = useCallback(() => {
-    pinNote(id, !pinned);
-  }, [id, pinned, pinNote]);
-
+  // keep local edit state in sync if the title changes externally
   useEffect(() => {
-    if (isEditing && titleInputRef.current) {
-      titleInputRef.current?.focus();
-    }
+    setEditingTitle(title);
+  }, [title]);
+
+  // focus when entering edit mode
+  useEffect(() => {
+    if (isEditing) titleInputRef.current?.focus();
   }, [isEditing]);
 
+  const handleSelect = () => selectNote(id);
+
+  const handleRename = (raw: string) => {
+    const next = raw.trim();
+    setIsEditing(false);
+    if (!next || next === title) return; // ignore empty or unchanged
+    renameNote(id, next);
+  };
+
+  const handleDelete = () => deleteNote(id);
+  const handlePin = () => pinNote(id, !pinned);
+
+  // Actions to be shared between the dropdown and context menu
+  const actions = [
+    {
+      key: 'pin',
+      onClick: handlePin,
+      label: pinned ? 'Unpin' : 'Pin',
+      Icon: Pin,
+      destructive: false,
+    },
+    {
+      key: 'rename',
+      onClick: () => setIsEditing(true),
+      label: 'Rename',
+      Icon: TextCursor,
+      destructive: false,
+    },
+    {
+      key: 'delete',
+      onClick: handleDelete,
+      label: 'Delete',
+      Icon: Trash2,
+      destructive: true,
+    },
+  ] as const;
+
   return (
-    <SidebarMenuItem key={id} className={className}>
+    <SidebarMenuItem className={className}>
       {isEditing ? (
         <Input
           size="small"
@@ -75,9 +101,39 @@ export default function NoteSidebarItem({ id, title, pinned, isEditing, setIsEdi
         />
       ) : (
         <>
-          <SidebarMenuButton isActive={isActive} onClick={handleSelect} title={title || 'Untitled'}>
-            <span className="truncate">{title || 'Untitled'}</span>
-          </SidebarMenuButton>
+          <ContextMenu>
+            <ContextMenuTrigger>
+              <SidebarMenuButton
+                isActive={isActive}
+                onClick={handleSelect}
+                title={title || 'Untitled'}
+                className="h-fit"
+              >
+                <div className="flex flex-col overflow-hidden">
+                  <p className="truncate font-bold">{title || 'Untitled'}</p>
+                  {true && (
+                    <p className="shrink truncate text-sm text-muted-foreground">
+                      Sample text to be replaced when we add the other text
+                    </p>
+                  )}
+                </div>
+              </SidebarMenuButton>
+            </ContextMenuTrigger>
+
+            <ContextMenuContent>
+              {actions.map(({ key, onClick, label, Icon, destructive }) => (
+                <ContextMenuItem
+                  key={key}
+                  onClick={onClick}
+                  className={cn('cursor-pointer', destructive && 'text-destructive focus:text-destructive')}
+                >
+                  <Icon aria-hidden className="text-inherit" />
+                  {label}
+                </ContextMenuItem>
+              ))}
+            </ContextMenuContent>
+          </ContextMenu>
+
           <SidebarMenuAction
             className={cn(
               'hover:bg-transparent',
@@ -86,29 +142,20 @@ export default function NoteSidebarItem({ id, title, pinned, isEditing, setIsEdi
           >
             <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
               <DropdownMenuTrigger asChild>
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreHorizontal className="h-4 w-4" aria-hidden />
               </DropdownMenuTrigger>
+
               <DropdownMenuContent align="start" className="w-40">
-                <DropdownMenuItem onClick={handlePin} className="cursor-pointer">
-                  <Pin className="text-inherit" />
-                  {pinned ? 'Unpin' : 'Pin'}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="cursor-pointer"
-                  onClick={() => {
-                    setIsEditing(true);
-                  }}
-                >
-                  <Edit className="text-inherit" />
-                  Rename
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleDelete}
-                  className="cursor-pointer text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="text-inherit" />
-                  Delete
-                </DropdownMenuItem>
+                {actions.map(({ key, onClick, label, Icon, destructive }) => (
+                  <DropdownMenuItem
+                    key={key}
+                    onClick={onClick}
+                    className={cn('cursor-pointer', destructive && 'text-destructive focus:text-destructive')}
+                  >
+                    <Icon aria-hidden className="text-inherit" />
+                    {label}
+                  </DropdownMenuItem>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuAction>
