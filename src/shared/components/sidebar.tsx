@@ -11,11 +11,13 @@ import {
   SidebarHeader,
   SidebarInput,
   SidebarMenu,
+  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Plus } from 'lucide-react';
 import { useNoteSearch } from '@/features/notes/hooks/use-note-search';
 import { useNotesStore } from '@/features/notes/state/notes.store';
 import NoteSidebarItem from '@/features/notes/components/sidebar/note-sidebar-item';
+import ZenLogo from './zen-icons';
 
 export default function NotesSidebar() {
   const selectedNoteId = useNotesStore((s) => s.selectedNoteId);
@@ -32,8 +34,11 @@ export default function NotesSidebar() {
   }, [fetchNotes]);
 
   return (
-    <Sidebar side="left" variant="floating" collapsible="offcanvas">
-      <SidebarHeader>
+    <Sidebar side="left" variant="inset" collapsible="offcanvas">
+      <SidebarHeader className="flex flex-col gap-y-4">
+        <div className="flex items-center justify-center">
+          <ZenLogo className="h-5 w-8 text-muted-foreground" />
+        </div>
         <SidebarInput
           placeholder="Search notes..."
           value={searchQuery}
@@ -48,7 +53,7 @@ export default function NotesSidebar() {
             <Plus />
           </SidebarGroupAction>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-y-1">
               {filteredNotes.map((note) => (
                 <NoteSidebarItem
                   key={note.id}

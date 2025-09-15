@@ -1,6 +1,5 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@plugin '@tailwindcss/typography';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -168,4 +167,89 @@
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   @apply pointer-events-none float-left h-0 text-muted-foreground/50;
+}
+
+.tiptap {
+  p {
+    @apply text-primary;
+  }
+
+  h1 {
+    @apply text-4xl leading-loose font-bold text-primary;
+  }
+
+  h2 {
+    @apply text-3xl leading-loose font-bold text-primary;
+  }
+
+  h3 {
+    @apply text-2xl leading-relaxed font-bold text-primary;
+  }
+
+  h4 {
+    @apply text-xl leading-relaxed font-bold text-primary;
+  }
+
+  h5 {
+    @apply text-lg font-bold text-primary;
+  }
+
+  h6 {
+    @apply text-base font-bold text-primary;
+  }
+
+  /* Lists */
+  ul {
+    @apply list-disc space-y-1 pl-6 text-primary;
+  }
+
+  ol {
+    @apply list-decimal space-y-1 pl-6 text-primary;
+  }
+
+  ul ul {
+    list-style-type: circle;
+  }
+
+  ul ul ul {
+    list-style-type: square;
+  }
+
+  li p {
+    @apply my-0;
+  }
+
+  /* Blockquotes */
+  blockquote {
+    @apply border-l-2 pl-4 text-muted-foreground italic;
+  }
+
+  /* Horizontal rule */
+  hr {
+    @apply my-4 border-t border-border;
+  }
+
+  /* Links */
+  a {
+    @apply text-primary underline underline-offset-4 hover:text-primary/80;
+  }
+
+  /* Inline code */
+  code {
+    @apply rounded bg-muted px-1.5 py-0.5 font-mono text-sm text-primary;
+  }
+
+  /* Code blocks */
+  pre {
+    @apply overflow-x-auto rounded-md bg-muted p-4;
+  }
+
+  pre code {
+    @apply block bg-transparent p-0 text-sm leading-6 text-primary;
+  }
+
+  /* Selected node highlight (e.g., image) */
+  .ProseMirror-selectednode img {
+    @apply ring-2 ring-ring;
+  }
 }

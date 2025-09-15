@@ -1,7 +1,11 @@
 import { useEditor, EditorContent, JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Highlight from '@tiptap/extension-highlight';
+
 import { Placeholder } from '@tiptap/extensions';
+import { all, createLowlight } from 'lowlight';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import Image from '@tiptap/extension-image';
+
 import { useEffect, useRef } from 'react';
 import { cn } from '@/shared/lib/ui-utils';
 import EditorToolbar from './editor-toolbar';
@@ -23,15 +27,24 @@ export default function EditorMain({ className }: EditorBodyProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const titleWrapperRef = useRef<HTMLDivElement | null>(null);
   const spacerRef = useRef<HTMLDivElement | null>(null);
-  const titleHeightRef = useRef(0);
 
   const debouncedUpdate = useDebouncedCallback((noteId: string, content_json: JSONContent, content_text: string) => {
     updateNoteContent(noteId, content_json, content_text);
   }, AUTOSAVE_DEBOUNCE_MS);
 
+  const lowlight = createLowlight(all);
+
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: [StarterKit, Highlight, Placeholder.configure({ placeholder: 'Write something...' })],
+    extensions: [
+      StarterKit.configure({
+        codeBlock: false,
+      }),
+      CodeBlockLowlight.configure({ lowlight }),
+      Placeholder.configure({ placeholder: 'Write something...' }),
+
+      Image,
+    ],
     content: '',
     editorProps: {
       attributes: {
@@ -59,10 +72,11 @@ export default function EditorMain({ className }: EditorBodyProps) {
     }
 
     return () => {
-      if (!selectedNoteId || !editor) return;
-
       // Prevent any pending autosaves before our final update
       debouncedUpdate.cancel();
+
+      if (!selectedNoteId || !editor) return;
+
       updateNoteContent(selectedNoteId, editor.getJSON(), editor.getText());
     };
   }, [editor, selectedNoteId, updateNoteContent, debouncedUpdate]);
@@ -99,34 +113,28 @@ export default function EditorMain({ className }: EditorBodyProps) {
     const spacerEl = spacerRef.current;
     if (!scrollEl || !titleEl || !spacerEl) return;
 
-    const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
-
-    // cache title's top offset inside the scroll container
-    const titleTop = titleEl.offsetTop;
-
-    const measure = () => {
+    const ro = new ResizeObserver(() => {
       const h = titleEl.offsetHeight;
-      titleHeightRef.current = h;
-      const visible = clamp(titleTop + h - scrollEl.scrollTop, 0, h);
-      spacerEl.style.height = `${visible}px`;
-    };
-
-    const onScroll = () => {
-      const h = titleHeightRef.current;
-      const visible = clamp(titleTop + h - scrollEl.scrollTop, 0, h);
-      spacerEl.style.height = `${visible}px`;
-    };
-
-    const ro = new ResizeObserver(measure);
+      spacerEl.style.height = `${h}px`;
+    });
     ro.observe(titleEl);
 
-    measure();
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const h = entry.boundingClientRect.height;
+        spacerEl.style.height = `${h * entry.intersectionRatio}px`;
+      },
+      {
+        root: scrollEl,
+        threshold: Array.from({ length: 101 }, (_, i) => i / 100), // Update every 1%
+      },
+    );
 
-    scrollEl.addEventListener('scroll', onScroll, { passive: true });
+    observer.observe(titleEl);
 
     return () => {
-      scrollEl.removeEventListener('scroll', onScroll);
       ro.disconnect();
+      observer.disconnect();
     };
   }, []);
 
@@ -137,33 +145,31 @@ export default function EditorMain({ className }: EditorBodyProps) {
         <EditorToolbar editor={editor} className="flex-1 rounded px-2" />
       </aside>
 
-      <section className="col-start-2 flex min-h-0 flex-col">
-        <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto">
-          <div className="flex h-full min-h-0 flex-col">
-            <div ref={titleWrapperRef} id="title" className="shrink-0 py-2">
-              <EditorTitle
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    editor?.chain().focus();
-                  }
-                }}
-              />
-            </div>
+      <section ref={scrollContainerRef} className="col-start-2 min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex h-full min-h-0 flex-col">
+          <div ref={titleWrapperRef} id="title" className="shrink-0 py-2">
+            <EditorTitle
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  editor?.chain().focus();
+                }
+              }}
+            />
+          </div>
 
-            <div className="min-h-0 flex-1">
-              <EditorContent
-                editor={editor}
-                className="h-full max-w-none"
-                onBlur={() => {
-                  // Get the id from the store directly, to avoid cross-note writes on selection change
-                  const currentNoteId = useNotesStore.getState().selectedNoteId;
-                  if (currentNoteId && editor) {
-                    updateNoteContent(currentNoteId, editor.getJSON(), editor.getText());
-                  }
-                }}
-              />
-            </div>
+          <div className="min-h-0 flex-1">
+            <EditorContent
+              editor={editor}
+              className="h-full max-w-none"
+              onBlur={() => {
+                // Get the id from the store directly, to avoid cross-note writes on selection change
+                const currentNoteId = useNotesStore.getState().selectedNoteId;
+                if (currentNoteId && editor) {
+                  updateNoteContent(currentNoteId, editor.getJSON(), editor.getText());
+                }
+              }}
+            />
           </div>
         </div>
       </section>

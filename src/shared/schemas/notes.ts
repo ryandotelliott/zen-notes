@@ -6,6 +6,7 @@ export interface BaseNote {
   title: string;
   content_json: JSONContent;
   content_text: string;
+  listOrderSeq: number;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
@@ -19,8 +20,8 @@ export interface LocalNote extends BaseNote {
 }
 
 export type NoteDTO = BaseNote;
-export type NoteCreateDTO = Pick<BaseNote, 'id' | 'title' | 'content_text' | 'content_json'>;
-export type NoteUpdateDTO = Pick<BaseNote, 'title' | 'content_text' | 'content_json'> & {
+export type NoteCreateDTO = Pick<BaseNote, 'id' | 'title' | 'content_text' | 'content_json' | 'listOrderSeq'>;
+export type NotePatchDTO = Partial<Pick<BaseNote, 'title' | 'content_text' | 'content_json' | 'listOrderSeq'>> & {
   baseVersion: number; // client's last known server version
 };
 
@@ -29,6 +30,7 @@ export const NoteSchema = z.object({
   title: z.string(),
   content_text: z.string(),
   content_json: z.custom<JSONContent>(),
+  listOrderSeq: z.number(),
   // Coerce any ISO strings into date objects
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),

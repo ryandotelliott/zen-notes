@@ -1,5 +1,5 @@
 import { prisma } from '@/server/prisma';
-import { NoteDTO, NoteCreateDTO, NoteUpdateDTO } from '@/shared/schemas/notes';
+import { NoteDTO, NoteCreateDTO, NotePatchDTO } from '@/shared/schemas/notes';
 import { z } from 'zod';
 import type { JSONContent } from '@tiptap/react';
 
@@ -14,9 +14,7 @@ function parseJsonContent(jsonContent: string): JSONContent {
 
 async function getAll(): Promise<NoteDTO[]> {
   const notes = await prisma.note.findMany({
-    orderBy: {
-      createdAt: 'desc',
-    },
+    orderBy: [{ listOrderSeq: 'desc' }, { createdAt: 'desc' }],
   });
 
   return notes.map((note) => ({
@@ -58,10 +56,13 @@ async function get(id: string): Promise<NoteDTO | null> {
 async function add(note: NoteCreateDTO): Promise<NoteDTO> {
   const createdNote = await prisma.note.create({
     data: {
-      ...note,
+      id: note.id,
+      title: note.title,
+      content_text: note.content_text,
+      content_json: JSON.stringify(note.content_json),
+      listOrderSeq: note.listOrderSeq,
       version: 1,
       deletedAt: null,
-      content_json: JSON.stringify(note.content_json),
     },
   });
 
@@ -71,7 +72,7 @@ async function add(note: NoteCreateDTO): Promise<NoteDTO> {
   };
 }
 
-async function update(id: string, updateData: NoteUpdateDTO): Promise<NoteDTO> {
+async function update(id: string, updateData: NotePatchDTO): Promise<NoteDTO> {
   // Check version for optimistic concurrency
   const currentNote = await prisma.note.findUnique({ where: { id } });
   if (!currentNote) {
@@ -88,14 +89,24 @@ async function update(id: string, updateData: NoteUpdateDTO): Promise<NoteDTO> {
     throw new Error('VERSION_CONFLICT');
   }
 
-  const { title, content_text, content_json } = updateData;
+  // Enforce monotonic listOrderSeq: only allow increasing values to be applied
+  const { listOrderSeq: incomingSeq, ...rest } = updateData;
+
+  const fieldUpdates: Record<string, unknown> = {};
+  if (rest.title !== undefined) fieldUpdates.title = rest.title;
+  if (rest.content_text !== undefined) fieldUpdates.content_text = rest.content_text;
+  if (rest.content_json !== undefined) fieldUpdates.content_json = JSON.stringify(rest.content_json);
+
+  const applyListOrderSeq =
+    typeof incomingSeq === 'number' && incomingSeq > (currentNote.listOrderSeq ?? 0)
+      ? { listOrderSeq: incomingSeq }
+      : {};
 
   const updatedNote = await prisma.note.update({
     where: { id },
     data: {
-      title,
-      content_text,
-      content_json: JSON.stringify(content_json),
+      ...fieldUpdates,
+      ...applyListOrderSeq,
       version: { increment: 1 },
     },
   });

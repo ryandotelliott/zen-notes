@@ -1,5 +1,5 @@
 import { JSONContent } from '@tiptap/react';
-import { BaseNote, NoteCreateDTO, NoteDTO, NoteUpdateDTO, type LocalNote } from '@/shared/schemas/notes';
+import { BaseNote, NoteCreateDTO, NoteDTO, NotePatchDTO, type LocalNote } from '@/shared/schemas/notes';
 
 export const DEFAULT_NOTE_DATE = new Date('2025-01-01T00:00:00Z');
 
@@ -8,6 +8,7 @@ export const createMockBaseNote = (overrides?: Partial<BaseNote>): BaseNote => (
   title: 'Test Note',
   content_json: { type: 'doc', content: [] } as JSONContent,
   content_text: 'Test content',
+  listOrderSeq: 0,
   createdAt: DEFAULT_NOTE_DATE,
   updatedAt: DEFAULT_NOTE_DATE,
   deletedAt: null,
@@ -20,6 +21,7 @@ export const createMockLocalNote = (overrides?: Partial<LocalNote>): LocalNote =
   title: 'Test Note',
   content_json: { type: 'doc', content: [] } as JSONContent,
   content_text: 'Test content',
+  listOrderSeq: 0,
   createdAt: DEFAULT_NOTE_DATE,
   updatedAt: DEFAULT_NOTE_DATE,
   deletedAt: null,
@@ -34,6 +36,7 @@ export const createMockNoteDTO = (overrides?: Partial<NoteDTO>): NoteDTO => ({
   title: 'Test Note',
   content_json: { type: 'doc', content: [] } as JSONContent,
   content_text: 'Test content',
+  listOrderSeq: 0,
   createdAt: DEFAULT_NOTE_DATE,
   updatedAt: DEFAULT_NOTE_DATE,
   deletedAt: null,
@@ -46,13 +49,15 @@ export const createMockNoteCreateDTO = (overrides?: Partial<NoteCreateDTO>): Not
   title: 'Test Note',
   content_json: { type: 'doc', content: [] } as JSONContent,
   content_text: 'Test content',
+  listOrderSeq: 0,
   ...overrides,
 });
 
-export const createMockNoteUpdateDTO = (overrides?: Partial<NoteUpdateDTO>): NoteUpdateDTO => ({
+export const createMockNoteUpdateDTO = (overrides?: Partial<NotePatchDTO>): NotePatchDTO => ({
   title: 'Test Note',
   content_json: { type: 'doc', content: [] } as JSONContent,
   content_text: 'Test content',
+  listOrderSeq: 0,
   baseVersion: 0,
   ...overrides,
 });

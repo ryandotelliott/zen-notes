@@ -2,9 +2,10 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import HeaderBar from '@/components/header-bar';
 import { Providers } from '@/shared/providers/providers';
-import NotesSidebar from '@/components/notes-sidebar';
+import NotesSidebar from '@/shared/components/sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Metadata } from 'next/types';
+import SidebarButtonGroup from '@/shared/components/sidebar-button-group';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -33,6 +34,7 @@ export default function RootLayout({
       >
         <Providers>
           <SidebarProvider>
+            <SidebarButtonGroup />
             <NotesSidebar />
             <SidebarInset>
               <HeaderBar />

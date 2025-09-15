@@ -10,7 +10,7 @@ export async function GET(params: { params: { id: string } }) {
   return Response.json(note);
 }
 
-export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   try {

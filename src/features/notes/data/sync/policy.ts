@@ -1,12 +1,8 @@
 import { LocalNote, NoteDTO } from '@/shared/schemas/notes';
 
-const lastWriteTs = (n: Pick<LocalNote, 'updatedAt' | 'deletedAt'>) => (n.deletedAt ? n.deletedAt : n.updatedAt);
-
 /** Determines which note has the most recent write timestamp */
 export function getLWWResolution(local: LocalNote, remote: NoteDTO): 'local' | 'remote' {
-  const lt = lastWriteTs(local);
-  const rt = lastWriteTs(remote);
-  return lt > rt ? 'local' : 'remote';
+  return local.updatedAt > remote.updatedAt ? 'local' : 'remote';
 }
 
 /** Checks whether remote has more recent changes than local */
