@@ -1,4 +1,4 @@
-import { NoteDTO, NoteCreateDTO, NoteUpdateDTO, NotesSchema, NoteSchema } from '@/shared/schemas/notes';
+import { NoteDTO, NoteCreateDTO, NotePatchDTO, NotesSchema, NoteSchema } from '@/shared/schemas/notes';
 import { z } from 'zod';
 
 const API_BASE = '/api/notes';
@@ -92,9 +92,9 @@ export async function create(note: NoteCreateDTO): Promise<ApiResult<NoteDTO>> {
   }
 }
 
-export async function update(id: string, note: NoteUpdateDTO & { baseVersion: number }): Promise<ApiResult<NoteDTO>> {
+export async function patch(id: string, note: NotePatchDTO): Promise<ApiResult<NoteDTO>> {
   const response = await fetch(`${API_BASE}/${id}`, {
-    method: 'PUT',
+    method: 'PATCH',
     body: JSON.stringify(note),
   });
 
@@ -120,4 +120,4 @@ export async function remove(id: string, baseVersion?: number): Promise<ApiResul
   }
 }
 
-export const notesApi = { getAll, getSince, get: getById, create, update, remove };
+export const notesApi = { getAll, getSince, get: getById, create, patch, remove };

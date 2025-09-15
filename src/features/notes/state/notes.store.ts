@@ -22,7 +22,7 @@ interface NotesState {
 
 let hasRepoSubscription = false;
 
-const sortByMostRecent = (notes: LocalNote[]) => sortObjectArrayByKeys(notes, ['updatedAt', 'createdAt'], 'desc');
+const sortByListOrder = (notes: LocalNote[]) => sortObjectArrayByKeys(notes, ['listOrderSeq', 'createdAt'], 'desc');
 
 /**
  * Selects the next appropriate note when the current selection is no longer available.
@@ -36,13 +36,13 @@ const selectNextNote = (
 ): string | null => {
   if (!currentSelectedId) return null;
 
-  const sortedCurrent = sortByMostRecent(currentNotes);
+  const sortedCurrent = sortByListOrder(currentNotes);
   const stillExists = sortedCurrent.some((n) => n.id === currentSelectedId);
 
   if (stillExists) return currentSelectedId;
 
   // Find which note was removed by comparing with previous state
-  const sortedPrevious = sortByMostRecent(previousNotes);
+  const sortedPrevious = sortByListOrder(previousNotes);
   const removedNoteIndex = sortedPrevious.findIndex((note) => !sortedCurrent.some((n) => n.id === note.id));
 
   if (removedNoteIndex === -1) {
@@ -82,7 +82,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         const observable = localNotesRepository.observeAll();
         observable.subscribe({
           next: (emittedNotes) => {
-            const sorted = sortByMostRecent(emittedNotes);
+            const sorted = sortByListOrder(emittedNotes);
             const currentSelected = get().selectedNoteId;
             const previousNotes = get().notes;
             const nextSelected = selectNextNote(previousNotes, emittedNotes, currentSelected);
@@ -110,6 +110,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       content_text: noteDto.content_text,
       createdAt: new Date(),
       updatedAt: new Date(),
+      listOrderSeq: 0,
       deletedAt: null,
       syncStatus: 'pending',
       baseVersion: 0,
@@ -122,11 +123,10 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }));
 
     try {
-      const savedNote = await localNotesRepository.add(noteDto);
-      set((state) => {
-        const newNotes = state.notes.map((note) => (note.id === tempId ? savedNote : note));
+      const reservedSeq = await localNotesRepository.reserveListOrderSeq();
+      const savedNote = await localNotesRepository.add(noteDto, { listOrderSeq: reservedSeq });
+      set(() => {
         return {
-          notes: sortByMostRecent(newNotes),
           selectedNoteId: savedNote.id,
         };
       });
@@ -152,7 +152,11 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       return;
     }
 
-    set({ selectedNoteId: newNote.id, error: null });
+    set((state) => ({
+      selectedNoteId: newNote.id,
+      error: null,
+      notes: sortByListOrder(state.notes.map((n) => (n.id === newNote.id ? newNote : n))),
+    }));
   },
 
   updateNoteContent: async (id: string, content_json: object, content_text: string) => {
@@ -163,7 +167,9 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const originalContent = originalNote.content_json;
     const originalContentText = originalNote.content_text;
     const originalUpdatedAt = originalNote.updatedAt;
+    const originalListOrderSeq = originalNote.listOrderSeq;
 
+    const nextListOrderSeq = await localNotesRepository.reserveListOrderSeq();
     const [originalHash, nextHash] = await Promise.all([hashJsonStable(originalContent), hashJsonStable(content_json)]);
 
     if (originalHash === nextHash) {
@@ -173,12 +179,18 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     set((state) => {
       const newNotes = state.notes.map((note) =>
         note.id === id
-          ? { ...note, content_json: content_json, content_text: content_text, updatedAt: new Date() }
+          ? {
+              ...note,
+              content_json: content_json,
+              content_text: content_text,
+              updatedAt: new Date(),
+              listOrderSeq: nextListOrderSeq,
+            }
           : note,
       );
 
       return {
-        notes: sortByMostRecent(newNotes),
+        notes: sortByListOrder(newNotes),
       };
     });
 
@@ -186,33 +198,20 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       const updatedNote = await localNotesRepository.update(id, {
         content_json: content_json,
         content_text: content_text,
+        listOrderSeq: nextListOrderSeq,
       });
 
       set((state) => {
         const newNotes = state.notes.map((note) => (note.id === id ? updatedNote : note));
 
         return {
-          notes: sortByMostRecent(newNotes),
           error: null,
         };
       });
     } catch (err) {
       console.error('Failed to update note content in IndexedDB:', err);
-      set((state) => {
-        const newNotes = state.notes.map((note) =>
-          note.id === id
-            ? {
-                ...note,
-                content_json: originalContent,
-                content_text: originalContentText,
-                updatedAt: originalUpdatedAt,
-              }
-            : note,
-        );
-        return {
-          error: 'Could not save the note content. Please try again.',
-          notes: sortByMostRecent(newNotes),
-        };
+      set({
+        error: 'Could not save the note content. Please try again.',
       });
     }
   },
@@ -224,7 +223,9 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }
     const originalTitle = originalNote.title;
     const originalUpdatedAt = originalNote.updatedAt;
+    const originalListOrderSeq = originalNote.listOrderSeq;
 
+    const nextListOrderSeq = await localNotesRepository.reserveListOrderSeq();
     const [originalTitleHash, nextTitleHash] = await Promise.all([
       hashStringSHA256(originalTitle ?? ''),
       hashStringSHA256(title ?? ''),
@@ -236,33 +237,31 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }
 
     set((state) => {
-      const newNotes = state.notes.map((note) => (note.id === id ? { ...note, title, updatedAt: new Date() } : note));
+      const newNotes = state.notes.map((note) =>
+        note.id === id ? { ...note, title, updatedAt: new Date(), listOrderSeq: nextListOrderSeq } : note,
+      );
       return {
-        notes: sortByMostRecent(newNotes),
+        notes: sortByListOrder(newNotes),
       };
     });
 
     try {
-      const updatedNote = await localNotesRepository.update(id, { title });
+      const updatedNote = await localNotesRepository.update(id, { title, listOrderSeq: nextListOrderSeq });
 
-      set((state) => {
-        const newNotes = state.notes.map((note) =>
-          note.id === id ? { ...note, title: updatedNote.title, updatedAt: updatedNote.updatedAt } : note,
-        );
-        return {
-          notes: sortByMostRecent(newNotes),
-          error: null,
-        };
+      set({
+        error: null,
       });
     } catch (err) {
       console.error('Failed to update note title in IndexedDB:', err);
       set((state) => {
         const newNotes = state.notes.map((note) =>
-          note.id === id ? { ...note, title: originalTitle, updatedAt: originalUpdatedAt } : note,
+          note.id === id
+            ? { ...note, title: originalTitle, updatedAt: originalUpdatedAt, listOrderSeq: originalListOrderSeq }
+            : note,
         );
 
         return {
-          notes: sortByMostRecent(newNotes),
+          notes: sortByListOrder(newNotes),
           error: 'Could not save the note title. Please try again.',
         };
       });
@@ -276,7 +275,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const nextSelected = selectNextNote(previousNotes, filteredNotes, currentSelected);
 
     set({
-      notes: sortByMostRecent(filteredNotes),
+      notes: sortByListOrder(filteredNotes),
       selectedNoteId: nextSelected,
       error: null,
     });

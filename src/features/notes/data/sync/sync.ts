@@ -45,13 +45,14 @@ async function pushLocalChanges(): Promise<SyncResults> {
             title: note.title,
             content_text: note.content_text,
             content_json: note.content_json,
+            listOrderSeq: note.listOrderSeq,
           });
         } else if (doUpdate) {
-          // Send update DTO shape with baseVersion for optimistic concurrency
-          res = await notesApi.update(note.id, {
+          res = await notesApi.patch(note.id, {
             title: note.title,
             content_text: note.content_text,
             content_json: note.content_json,
+            listOrderSeq: note.listOrderSeq,
             baseVersion,
           });
         } else {
@@ -79,10 +80,11 @@ async function pushLocalChanges(): Promise<SyncResults> {
 
             if (winner === 'local') {
               if (doUpdate) {
-                const retry = await notesApi.update(note.id, {
+                const retry = await notesApi.patch(note.id, {
                   title: note.title,
                   content_text: note.content_text,
                   content_json: note.content_json,
+                  listOrderSeq: note.listOrderSeq,
                   // Use server version as new baseVersion to force overwrite
                   baseVersion: serverNote.version,
                 });
@@ -122,6 +124,7 @@ async function pushLocalChanges(): Promise<SyncResults> {
               title: note.title,
               content_text: note.content_text,
               content_json: note.content_json,
+              listOrderSeq: note.listOrderSeq,
             });
             if (createRes.ok) {
               await localNotesRepository.updateFromServer(createRes.data);
