@@ -6,11 +6,11 @@ import { SidebarMenuAction, SidebarMenuButton, SidebarMenuItem } from '@/shared/
 import { Input } from '@/shared/components/ui/input';
 import { BaseNote } from '@/shared/schemas/notes';
 import { DropdownMenu } from '@/shared/components/ui/dropdown-menu';
-import { Edit, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Edit, MoreHorizontal, Pin, Trash2 } from 'lucide-react';
 import { cn } from '@/shared/lib/ui-utils';
 import { useNotesStore } from '@/features/notes/state/notes.store';
 
-type NoteFields = Pick<BaseNote, 'id' | 'title'>;
+type NoteFields = Pick<BaseNote, 'id' | 'title' | 'pinned'>;
 
 interface Props extends NoteFields {
   isEditing: boolean;
@@ -19,7 +19,7 @@ interface Props extends NoteFields {
   className?: string;
 }
 
-export default function NoteSidebarItem({ id, title, isEditing, setIsEditing, isActive, className }: Props) {
+export default function NoteSidebarItem({ id, title, pinned, isEditing, setIsEditing, isActive, className }: Props) {
   const [editingTitle, setEditingTitle] = useState<string>(title);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
@@ -28,6 +28,7 @@ export default function NoteSidebarItem({ id, title, isEditing, setIsEditing, is
   const selectNote = useNotesStore((s) => s.selectNote);
   const renameNote = useNotesStore((s) => s.updateNoteTitle);
   const deleteNote = useNotesStore((s) => s.deleteNote);
+  const pinNote = useNotesStore((s) => s.updateNotePinned);
 
   const handleSelect = useCallback(() => {
     selectNote(id);
@@ -44,6 +45,10 @@ export default function NoteSidebarItem({ id, title, isEditing, setIsEditing, is
   const handleDelete = useCallback(() => {
     deleteNote(id);
   }, [id, deleteNote]);
+
+  const handlePin = useCallback(() => {
+    pinNote(id, !pinned);
+  }, [id, pinned, pinNote]);
 
   useEffect(() => {
     if (isEditing && titleInputRef.current) {
@@ -84,13 +89,17 @@ export default function NoteSidebarItem({ id, title, isEditing, setIsEditing, is
                 <MoreHorizontal className="h-4 w-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-40">
+                <DropdownMenuItem onClick={handlePin} className="cursor-pointer">
+                  <Pin className="text-inherit" />
+                  {pinned ? 'Unpin' : 'Pin'}
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   className="cursor-pointer"
                   onClick={() => {
                     setIsEditing(true);
                   }}
                 >
-                  <Edit />
+                  <Edit className="text-inherit" />
                   Rename
                 </DropdownMenuItem>
                 <DropdownMenuItem

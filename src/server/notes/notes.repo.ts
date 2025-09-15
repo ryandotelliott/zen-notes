@@ -96,6 +96,7 @@ async function update(id: string, updateData: NotePatchDTO): Promise<NoteDTO> {
   if (rest.title !== undefined) fieldUpdates.title = rest.title;
   if (rest.content_text !== undefined) fieldUpdates.content_text = rest.content_text;
   if (rest.content_json !== undefined) fieldUpdates.content_json = JSON.stringify(rest.content_json);
+  if (rest.pinned !== undefined) fieldUpdates.pinned = rest.pinned;
 
   const applyListOrderSeq =
     typeof incomingSeq === 'number' && incomingSeq > (currentNote.listOrderSeq ?? 0)

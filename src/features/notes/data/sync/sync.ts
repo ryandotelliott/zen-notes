@@ -53,6 +53,7 @@ async function pushLocalChanges(): Promise<SyncResults> {
             content_text: note.content_text,
             content_json: note.content_json,
             listOrderSeq: note.listOrderSeq,
+            pinned: note.pinned,
             baseVersion,
           });
         } else {
@@ -85,6 +86,7 @@ async function pushLocalChanges(): Promise<SyncResults> {
                   content_text: note.content_text,
                   content_json: note.content_json,
                   listOrderSeq: note.listOrderSeq,
+                  pinned: note.pinned,
                   // Use server version as new baseVersion to force overwrite
                   baseVersion: serverNote.version,
                 });
