@@ -1,7 +1,11 @@
 import { useEditor, EditorContent, JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Highlight from '@tiptap/extension-highlight';
+
 import { Placeholder } from '@tiptap/extensions';
+import { all, createLowlight } from 'lowlight';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import Image from '@tiptap/extension-image';
+
 import { useEffect, useRef } from 'react';
 import { cn } from '@/shared/lib/ui-utils';
 import EditorToolbar from './editor-toolbar';
@@ -28,9 +32,19 @@ export default function EditorMain({ className }: EditorBodyProps) {
     updateNoteContent(noteId, content_json, content_text);
   }, AUTOSAVE_DEBOUNCE_MS);
 
+  const lowlight = createLowlight(all);
+
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: [StarterKit, Highlight, Placeholder.configure({ placeholder: 'Write something...' })],
+    extensions: [
+      StarterKit.configure({
+        codeBlock: false,
+      }),
+      CodeBlockLowlight.configure({ lowlight }),
+      Placeholder.configure({ placeholder: 'Write something...' }),
+
+      Image,
+    ],
     content: '',
     editorProps: {
       attributes: {

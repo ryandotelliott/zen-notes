@@ -79,7 +79,7 @@ export default function EditorTitle({
     <h1
       ref={titleRef}
       className={cn(
-        'text-3xl font-bold focus:outline-none',
+        'text-4xl font-bold focus:outline-none',
         'before:pointer-events-none before:text-muted-foreground/50',
         'data-[empty=true]:before:content-[attr(data-placeholder)]',
         className,
