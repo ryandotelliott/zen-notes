@@ -6,8 +6,8 @@ export const DEFAULT_NOTE_DATE = new Date('2025-01-01T00:00:00Z');
 export const createMockBaseNote = (overrides?: Partial<BaseNote>): BaseNote => ({
   id: 'test-note',
   title: 'Test Note',
-  content_json: { type: 'doc', content: [] } as JSONContent,
-  content_text: 'Test content',
+  contentJson: { type: 'doc', content: [] } as JSONContent,
+  contentText: 'Test content',
   listOrderSeq: 0,
   createdAt: DEFAULT_NOTE_DATE,
   updatedAt: DEFAULT_NOTE_DATE,
@@ -19,8 +19,8 @@ export const createMockBaseNote = (overrides?: Partial<BaseNote>): BaseNote => (
 export const createMockLocalNote = (overrides?: Partial<LocalNote>): LocalNote => ({
   id: 'test-note',
   title: 'Test Note',
-  content_json: { type: 'doc', content: [] } as JSONContent,
-  content_text: 'Test content',
+  contentJson: { type: 'doc', content: [] } as JSONContent,
+  contentText: 'Test content',
   listOrderSeq: 0,
   createdAt: DEFAULT_NOTE_DATE,
   updatedAt: DEFAULT_NOTE_DATE,
@@ -34,8 +34,8 @@ export const createMockLocalNote = (overrides?: Partial<LocalNote>): LocalNote =
 export const createMockNoteDTO = (overrides?: Partial<NoteDTO>): NoteDTO => ({
   id: 'test-note',
   title: 'Test Note',
-  content_json: { type: 'doc', content: [] } as JSONContent,
-  content_text: 'Test content',
+  contentJson: { type: 'doc', content: [] } as JSONContent,
+  contentText: 'Test content',
   listOrderSeq: 0,
   createdAt: DEFAULT_NOTE_DATE,
   updatedAt: DEFAULT_NOTE_DATE,
@@ -47,16 +47,16 @@ export const createMockNoteDTO = (overrides?: Partial<NoteDTO>): NoteDTO => ({
 export const createMockNoteCreateDTO = (overrides?: Partial<NoteCreateDTO>): NoteCreateDTO => ({
   id: 'test-note',
   title: 'Test Note',
-  content_json: { type: 'doc', content: [] } as JSONContent,
-  content_text: 'Test content',
+  contentJson: { type: 'doc', content: [] } as JSONContent,
+  contentText: 'Test content',
   listOrderSeq: 0,
   ...overrides,
 });
 
 export const createMockNoteUpdateDTO = (overrides?: Partial<NotePatchDTO>): NotePatchDTO => ({
   title: 'Test Note',
-  content_json: { type: 'doc', content: [] } as JSONContent,
-  content_text: 'Test content',
+  contentJson: { type: 'doc', content: [] } as JSONContent,
+  contentText: 'Test content',
   listOrderSeq: 0,
   baseVersion: 0,
   ...overrides,

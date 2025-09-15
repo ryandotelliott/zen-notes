@@ -28,8 +28,8 @@ export default function EditorMain({ className }: EditorBodyProps) {
   const titleWrapperRef = useRef<HTMLDivElement | null>(null);
   const spacerRef = useRef<HTMLDivElement | null>(null);
 
-  const debouncedUpdate = useDebouncedCallback((noteId: string, content_json: JSONContent, content_text: string) => {
-    updateNoteContent(noteId, content_json, content_text);
+  const debouncedUpdate = useDebouncedCallback((noteId: string, contentJson: JSONContent, contentText: string) => {
+    updateNoteContent(noteId, contentJson, contentText);
   }, AUTOSAVE_DEBOUNCE_MS);
 
   const lowlight = createLowlight(all);
@@ -52,11 +52,11 @@ export default function EditorMain({ className }: EditorBodyProps) {
       },
     },
     onUpdate: ({ editor }) => {
-      const content_json = editor.getJSON();
-      const content_text = editor.getText();
+      const contentJson = editor.getJSON();
+      const contentText = editor.getText();
       const currentNoteId = useNotesStore.getState().selectedNoteId;
       if (!currentNoteId) return;
-      debouncedUpdate(currentNoteId, content_json, content_text);
+      debouncedUpdate(currentNoteId, contentJson, contentText);
     },
   });
 
@@ -67,7 +67,7 @@ export default function EditorMain({ className }: EditorBodyProps) {
     if (selectedNoteId) {
       const notesState = useNotesStore.getState().notes;
       const note = notesState.find((n) => n.id === selectedNoteId);
-      const content = note?.content_json && Object.keys(note?.content_json).length > 0 ? note?.content_json : '';
+      const content = note?.contentJson && Object.keys(note?.contentJson).length > 0 ? note?.contentJson : '';
       editor.commands.setContent(content, { emitUpdate: false });
     }
 
@@ -88,10 +88,10 @@ export default function EditorMain({ className }: EditorBodyProps) {
     // Avoid unnecessary setContent if text is already in sync
     // This prevents us from changing content when updating the store locally.
     const currentText = editor.getText();
-    if (currentText === (activeNote.content_text ?? '')) return;
+    if (currentText === (activeNote.contentText ?? '')) return;
 
     const content =
-      activeNote.content_json && Object.keys(activeNote.content_json).length > 0 ? activeNote.content_json : '';
+      activeNote.contentJson && Object.keys(activeNote.contentJson).length > 0 ? activeNote.contentJson : '';
     editor.commands.setContent(content, { emitUpdate: false });
   }, [editor, activeNote]);
 

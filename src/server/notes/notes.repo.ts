@@ -19,7 +19,7 @@ async function getAll(): Promise<NoteDTO[]> {
 
   return notes.map((note) => ({
     ...note,
-    content_json: parseJsonContent(note.content_json),
+    contentJson: parseJsonContent(note.contentJson),
   }));
 }
 
@@ -38,7 +38,7 @@ async function getUpdatedSince(since: Date, cutoff: Date): Promise<NoteDTO[]> {
 
   return notes.map((note) => ({
     ...note,
-    content_json: parseJsonContent(note.content_json),
+    contentJson: parseJsonContent(note.contentJson),
   }));
 }
 
@@ -49,7 +49,7 @@ async function get(id: string): Promise<NoteDTO | null> {
   }
   return {
     ...note,
-    content_json: parseJsonContent(note.content_json),
+    contentJson: parseJsonContent(note.contentJson),
   };
 }
 
@@ -58,8 +58,8 @@ async function add(note: NoteCreateDTO): Promise<NoteDTO> {
     data: {
       id: note.id,
       title: note.title,
-      content_text: note.content_text,
-      content_json: JSON.stringify(note.content_json),
+      contentText: note.contentText,
+      contentJson: JSON.stringify(note.contentJson),
       listOrderSeq: note.listOrderSeq,
       version: 1,
       deletedAt: null,
@@ -68,7 +68,7 @@ async function add(note: NoteCreateDTO): Promise<NoteDTO> {
 
   return {
     ...createdNote,
-    content_json: parseJsonContent(createdNote.content_json),
+    contentJson: parseJsonContent(createdNote.contentJson),
   };
 }
 
@@ -94,8 +94,9 @@ async function update(id: string, updateData: NotePatchDTO): Promise<NoteDTO> {
 
   const fieldUpdates: Record<string, unknown> = {};
   if (rest.title !== undefined) fieldUpdates.title = rest.title;
-  if (rest.content_text !== undefined) fieldUpdates.content_text = rest.content_text;
-  if (rest.content_json !== undefined) fieldUpdates.content_json = JSON.stringify(rest.content_json);
+  if (rest.contentText !== undefined) fieldUpdates.contentText = rest.contentText;
+  if (rest.contentJson !== undefined) fieldUpdates.contentJson = JSON.stringify(rest.contentJson);
+  if (rest.pinned !== undefined) fieldUpdates.pinned = rest.pinned;
 
   const applyListOrderSeq =
     typeof incomingSeq === 'number' && incomingSeq > (currentNote.listOrderSeq ?? 0)
@@ -113,7 +114,7 @@ async function update(id: string, updateData: NotePatchDTO): Promise<NoteDTO> {
 
   return {
     ...updatedNote,
-    content_json: parseJsonContent(updatedNote.content_json),
+    contentJson: parseJsonContent(updatedNote.contentJson),
   };
 }
 
@@ -137,7 +138,7 @@ async function remove(id: string, baseVersion?: number): Promise<NoteDTO> {
 
   return {
     ...removedNote,
-    content_json: parseJsonContent(removedNote.content_json),
+    contentJson: parseJsonContent(removedNote.contentJson),
   };
 }
 

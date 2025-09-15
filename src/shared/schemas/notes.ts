@@ -4,9 +4,10 @@ import { z } from 'zod';
 export interface BaseNote {
   id: string;
   title: string;
-  content_json: JSONContent;
-  content_text: string;
+  contentJson: JSONContent;
+  contentText: string;
   listOrderSeq: number;
+  pinned: boolean;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
@@ -14,23 +15,26 @@ export interface BaseNote {
 }
 
 export interface LocalNote extends BaseNote {
-  content_json: JSONContent;
+  previewText: string;
   syncStatus: 'pending' | 'synced';
   baseVersion: number; // last server-acknowledged version
 }
 
 export type NoteDTO = BaseNote;
-export type NoteCreateDTO = Pick<BaseNote, 'id' | 'title' | 'content_text' | 'content_json' | 'listOrderSeq'>;
-export type NotePatchDTO = Partial<Pick<BaseNote, 'title' | 'content_text' | 'content_json' | 'listOrderSeq'>> & {
+export type NoteCreateDTO = Pick<BaseNote, 'id' | 'title' | 'contentText' | 'contentJson' | 'listOrderSeq'>;
+export type NotePatchDTO = Partial<
+  Pick<BaseNote, 'title' | 'contentText' | 'contentJson' | 'listOrderSeq' | 'pinned'>
+> & {
   baseVersion: number; // client's last known server version
 };
 
 export const NoteSchema = z.object({
   id: z.string(),
   title: z.string(),
-  content_text: z.string(),
-  content_json: z.custom<JSONContent>(),
+  contentText: z.string(),
+  contentJson: z.custom<JSONContent>(),
   listOrderSeq: z.number(),
+  pinned: z.boolean(),
   // Coerce any ISO strings into date objects
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),

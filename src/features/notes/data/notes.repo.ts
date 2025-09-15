@@ -3,8 +3,9 @@
 import { db } from '@/features/notes/data/notes.db';
 import { liveQuery, type Observable } from 'dexie';
 import type { LocalNote, NoteDTO } from '@/shared/schemas/notes';
+import { computePreviewText } from '../lib/content-utils';
 
-export type CreateNoteDTO = Pick<LocalNote, 'title' | 'content_json' | 'content_text'>;
+export type CreateNoteDTO = Pick<LocalNote, 'title' | 'contentJson' | 'contentText'>;
 export type UpdateNoteDTO = Partial<
   Omit<LocalNote, 'id' | 'createdAt' | 'version' | 'baseVersion' | 'listOrderSeq' | 'syncStatus'>
 > & { listOrderSeq?: number };
@@ -64,9 +65,11 @@ async function add(noteDto: CreateNoteDTO, opts?: { listOrderSeq?: number }): Pr
   const newNote: LocalNote = {
     id: crypto.randomUUID(),
     ...noteDto,
+    previewText: computePreviewText(noteDto.contentText),
     createdAt: new Date(),
     updatedAt: new Date(),
     listOrderSeq: seq,
+    pinned: false,
     version: 0,
     syncStatus: 'pending',
     deletedAt: null,
@@ -165,6 +168,7 @@ async function updateFromServer(serverNote: NoteDTO): Promise<void> {
       ...serverNote,
       syncStatus: 'synced',
       baseVersion: serverNote.version,
+      previewText: computePreviewText(serverNote.contentText),
     };
     await db.notes.add(localNoteData);
     await ensureListOrderCounterAtLeast(serverNote.listOrderSeq ?? 0);

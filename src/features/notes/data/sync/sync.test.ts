@@ -67,8 +67,8 @@ describe('pushLocalChanges', () => {
     expect(apiCreateSpy).toHaveBeenCalledWith({
       id: local.id,
       title: local.title,
-      content_text: local.content_text,
-      content_json: local.content_json,
+      contentText: local.contentText,
+      contentJson: local.contentJson,
       listOrderSeq: local.listOrderSeq,
     });
     expect(lnUpdateFromServerSpy).toHaveBeenCalledWith(remote);
@@ -86,8 +86,8 @@ describe('pushLocalChanges', () => {
     expect(res).toEqual({ success: true, pushed: 1, pulled: 0, conflicts: 0 });
     expect(apiPatchSpy).toHaveBeenCalledWith(local.id, {
       title: local.title,
-      content_text: local.content_text,
-      content_json: local.content_json,
+      contentText: local.contentText,
+      contentJson: local.contentJson,
       listOrderSeq: local.listOrderSeq,
       baseVersion: 2,
     });
@@ -142,15 +142,15 @@ describe('pushLocalChanges', () => {
     expect(res).toEqual({ success: true, pushed: 1, pulled: 0, conflicts: 1 });
     expect(apiPatchSpy).toHaveBeenNthCalledWith(1, local.id, {
       title: local.title,
-      content_text: local.content_text,
-      content_json: local.content_json,
+      contentText: local.contentText,
+      contentJson: local.contentJson,
       listOrderSeq: local.listOrderSeq,
       baseVersion: 2,
     });
     expect(apiPatchSpy).toHaveBeenNthCalledWith(2, local.id, {
       title: local.title,
-      content_text: local.content_text,
-      content_json: local.content_json,
+      contentText: local.contentText,
+      contentJson: local.contentJson,
       listOrderSeq: local.listOrderSeq,
       baseVersion: serverNote.version,
     });

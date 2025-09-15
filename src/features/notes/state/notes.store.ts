@@ -6,6 +6,7 @@ import { CreateNoteDTO, localNotesRepository } from '../data/notes.repo';
 import { create } from 'zustand';
 import { hashJsonStable, hashStringSHA256 } from '@/shared/lib/hashing-utils';
 import { sortObjectArrayByKeys } from '@/shared/lib/sorting-utils';
+import { computePreviewText } from '../lib/content-utils';
 
 interface NotesState {
   notes: LocalNote[];
@@ -15,8 +16,9 @@ interface NotesState {
   fetchNotes: () => Promise<void>;
   addNote: (noteDto: CreateNoteDTO) => Promise<void>;
   selectNote: (id: string) => void;
-  updateNoteContent: (id: string, content_json: JSONContent, content_text: string) => Promise<void>;
+  updateNoteContent: (id: string, contentJson: JSONContent, contentText: string) => Promise<void>;
   updateNoteTitle: (id: string, title: string) => Promise<void>;
+  updateNotePinned: (id: string, pinned: boolean) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
 }
 
@@ -106,11 +108,13 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const optimisticNote: LocalNote = {
       id: tempId,
       ...noteDto,
-      content_json: noteDto.content_json,
-      content_text: noteDto.content_text,
+      contentJson: noteDto.contentJson,
+      contentText: noteDto.contentText,
+      previewText: computePreviewText(noteDto.contentText),
       createdAt: new Date(),
       updatedAt: new Date(),
       listOrderSeq: 0,
+      pinned: false,
       deletedAt: null,
       syncStatus: 'pending',
       baseVersion: 0,
@@ -159,18 +163,18 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }));
   },
 
-  updateNoteContent: async (id: string, content_json: object, content_text: string) => {
+  updateNoteContent: async (id: string, contentJson: object, contentText: string) => {
     const originalNote = get().notes.find((note) => note.id === id);
     if (!originalNote) {
       return;
     }
-    const originalContent = originalNote.content_json;
-    const originalContentText = originalNote.content_text;
+    const originalContent = originalNote.contentJson;
+    const originalContentText = originalNote.contentText;
     const originalUpdatedAt = originalNote.updatedAt;
     const originalListOrderSeq = originalNote.listOrderSeq;
 
     const nextListOrderSeq = await localNotesRepository.reserveListOrderSeq();
-    const [originalHash, nextHash] = await Promise.all([hashJsonStable(originalContent), hashJsonStable(content_json)]);
+    const [originalHash, nextHash] = await Promise.all([hashJsonStable(originalContent), hashJsonStable(contentJson)]);
 
     if (originalHash === nextHash) {
       return;
@@ -181,8 +185,9 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         note.id === id
           ? {
               ...note,
-              content_json: content_json,
-              content_text: content_text,
+              contentJson,
+              contentText,
+              previewText: computePreviewText(contentText),
               updatedAt: new Date(),
               listOrderSeq: nextListOrderSeq,
             }
@@ -195,23 +200,37 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     });
 
     try {
-      const updatedNote = await localNotesRepository.update(id, {
-        content_json: content_json,
-        content_text: content_text,
+      await localNotesRepository.update(id, {
+        contentJson,
+        contentText,
+        previewText: computePreviewText(contentText),
         listOrderSeq: nextListOrderSeq,
       });
 
-      set((state) => {
-        const newNotes = state.notes.map((note) => (note.id === id ? updatedNote : note));
-
-        return {
-          error: null,
-        };
+      set({
+        error: null,
       });
     } catch (err) {
       console.error('Failed to update note content in IndexedDB:', err);
-      set({
-        error: 'Could not save the note content. Please try again.',
+
+      set((state) => {
+        const newNotes = state.notes.map((note) =>
+          note.id === id
+            ? {
+                ...note,
+                contentJson: originalContent,
+                contentText: originalContentText,
+                previewText: computePreviewText(originalContentText),
+                updatedAt: originalUpdatedAt,
+                listOrderSeq: originalListOrderSeq,
+                baseVersion: originalNote.baseVersion,
+              }
+            : note,
+        );
+        return {
+          notes: sortByListOrder(newNotes),
+          error: 'Could not save the note content. Please try again.',
+        };
       });
     }
   },
@@ -246,8 +265,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     });
 
     try {
-      const updatedNote = await localNotesRepository.update(id, { title, listOrderSeq: nextListOrderSeq });
-
+      await localNotesRepository.update(id, { title, listOrderSeq: nextListOrderSeq });
       set({
         error: null,
       });
@@ -263,6 +281,41 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         return {
           notes: sortByListOrder(newNotes),
           error: 'Could not save the note title. Please try again.',
+        };
+      });
+    }
+  },
+
+  updateNotePinned: async (id: string, pinned: boolean) => {
+    const originalNote = get().notes.find((note) => note.id === id);
+    if (!originalNote) {
+      return;
+    }
+    const originalPinned = originalNote.pinned;
+    const originalUpdatedAt = originalNote.updatedAt;
+
+    set((state) => {
+      const newNotes = state.notes.map((note) => (note.id === id ? { ...note, pinned, updatedAt: new Date() } : note));
+      return {
+        notes: sortByListOrder(newNotes),
+      };
+    });
+
+    try {
+      await localNotesRepository.update(id, { pinned });
+
+      set({
+        error: null,
+      });
+    } catch (err) {
+      console.error('Failed to update note pinned in IndexedDB:', err);
+      set((state) => {
+        const newNotes = state.notes.map((note) =>
+          note.id === id ? { ...note, pinned: originalPinned, updatedAt: originalUpdatedAt } : note,
+        );
+        return {
+          notes: sortByListOrder(newNotes),
+          error: 'Could not save the note pinned. Please try again.',
         };
       });
     }
@@ -285,11 +338,11 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     } catch (err) {
       console.error('Failed to delete note from IndexedDB:', err);
       // Rollback the optimistic update
-      set((state) => ({
+      set({
         error: 'Could not delete the note. Please try again.',
         notes: previousNotes,
         selectedNoteId: currentSelected,
-      }));
+      });
     }
   },
 }));
