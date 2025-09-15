@@ -6,6 +6,7 @@ import { CreateNoteDTO, localNotesRepository } from '../data/notes.repo';
 import { create } from 'zustand';
 import { hashJsonStable, hashStringSHA256 } from '@/shared/lib/hashing-utils';
 import { sortObjectArrayByKeys } from '@/shared/lib/sorting-utils';
+import { computePreviewText } from '../lib/content-utils';
 
 interface NotesState {
   notes: LocalNote[];
@@ -109,6 +110,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       ...noteDto,
       contentJson: noteDto.contentJson,
       contentText: noteDto.contentText,
+      previewText: computePreviewText(noteDto.contentText),
       createdAt: new Date(),
       updatedAt: new Date(),
       listOrderSeq: 0,
@@ -185,6 +187,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
               ...note,
               contentJson,
               contentText,
+              previewText: computePreviewText(contentText),
               updatedAt: new Date(),
               listOrderSeq: nextListOrderSeq,
             }
@@ -200,6 +203,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       await localNotesRepository.update(id, {
         contentJson,
         contentText,
+        previewText: computePreviewText(contentText),
         listOrderSeq: nextListOrderSeq,
       });
 
@@ -216,6 +220,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
                 ...note,
                 contentJson: originalContent,
                 contentText: originalContentText,
+                previewText: computePreviewText(originalContentText),
                 updatedAt: originalUpdatedAt,
                 listOrderSeq: originalListOrderSeq,
                 baseVersion: originalNote.baseVersion,

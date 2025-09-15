@@ -122,6 +122,7 @@ export default function NotesSidebar() {
                       key={note.id}
                       id={note.id}
                       title={note.title}
+                      previewText={note.previewText}
                       pinned={note.pinned}
                       isEditing={editingId === note.id}
                       setIsEditing={(editing: boolean) => setEditingId(editing ? note.id : null)}

@@ -15,6 +15,7 @@ export interface BaseNote {
 }
 
 export interface LocalNote extends BaseNote {
+  previewText: string;
   syncStatus: 'pending' | 'synced';
   baseVersion: number; // last server-acknowledged version
 }

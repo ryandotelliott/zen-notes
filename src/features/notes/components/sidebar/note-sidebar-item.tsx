@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { SidebarMenuAction, SidebarMenuButton, SidebarMenuItem } from '@/shared/components/ui/sidebar';
 import { Input } from '@/shared/components/ui/input';
-import { BaseNote } from '@/shared/schemas/notes';
+import { BaseNote, LocalNote } from '@/shared/schemas/notes';
 import { DropdownMenu } from '@/shared/components/ui/dropdown-menu';
 import { Edit, MoreHorizontal, Pin, TextCursor, Trash2 } from 'lucide-react';
 import { cn } from '@/shared/lib/ui-utils';
@@ -16,7 +16,7 @@ import {
   ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
 
-type NoteFields = Pick<BaseNote, 'id' | 'title' | 'pinned'>;
+type NoteFields = Pick<LocalNote, 'id' | 'title' | 'pinned' | 'previewText'>;
 
 interface Props extends NoteFields {
   isEditing: boolean;
@@ -25,7 +25,16 @@ interface Props extends NoteFields {
   className?: string;
 }
 
-export default function NoteSidebarItem({ id, title, pinned, isEditing, setIsEditing, isActive, className }: Props) {
+export default function NoteSidebarItem({
+  id,
+  title,
+  pinned,
+  previewText,
+  isEditing,
+  setIsEditing,
+  isActive,
+  className,
+}: Props) {
   const [editingTitle, setEditingTitle] = useState<string>(title);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -113,7 +122,7 @@ export default function NoteSidebarItem({ id, title, pinned, isEditing, setIsEdi
                   <p className="truncate font-bold">{title || 'Untitled'}</p>
                   {true && (
                     <p className="shrink truncate text-sm text-muted-foreground">
-                      Sample text to be replaced when we add the other text
+                      {previewText || 'No additional text'}
                     </p>
                   )}
                 </div>
