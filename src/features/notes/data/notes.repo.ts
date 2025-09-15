@@ -4,7 +4,7 @@ import { db } from '@/features/notes/data/notes.db';
 import { liveQuery, type Observable } from 'dexie';
 import type { LocalNote, NoteDTO } from '@/shared/schemas/notes';
 
-export type CreateNoteDTO = Pick<LocalNote, 'title' | 'content_json' | 'content_text'>;
+export type CreateNoteDTO = Pick<LocalNote, 'title' | 'contentJson' | 'contentText'>;
 export type UpdateNoteDTO = Partial<
   Omit<LocalNote, 'id' | 'createdAt' | 'version' | 'baseVersion' | 'listOrderSeq' | 'syncStatus'>
 > & { listOrderSeq?: number };
@@ -67,6 +67,7 @@ async function add(noteDto: CreateNoteDTO, opts?: { listOrderSeq?: number }): Pr
     createdAt: new Date(),
     updatedAt: new Date(),
     listOrderSeq: seq,
+    pinned: false,
     version: 0,
     syncStatus: 'pending',
     deletedAt: null,

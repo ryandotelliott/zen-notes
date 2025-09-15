@@ -15,7 +15,7 @@ interface NotesState {
   fetchNotes: () => Promise<void>;
   addNote: (noteDto: CreateNoteDTO) => Promise<void>;
   selectNote: (id: string) => void;
-  updateNoteContent: (id: string, content_json: JSONContent, content_text: string) => Promise<void>;
+  updateNoteContent: (id: string, contentJson: JSONContent, contentText: string) => Promise<void>;
   updateNoteTitle: (id: string, title: string) => Promise<void>;
   updateNotePinned: (id: string, pinned: boolean) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
@@ -107,8 +107,8 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     const optimisticNote: LocalNote = {
       id: tempId,
       ...noteDto,
-      content_json: noteDto.content_json,
-      content_text: noteDto.content_text,
+      contentJson: noteDto.contentJson,
+      contentText: noteDto.contentText,
       createdAt: new Date(),
       updatedAt: new Date(),
       listOrderSeq: 0,
@@ -161,18 +161,18 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }));
   },
 
-  updateNoteContent: async (id: string, content_json: object, content_text: string) => {
+  updateNoteContent: async (id: string, contentJson: object, contentText: string) => {
     const originalNote = get().notes.find((note) => note.id === id);
     if (!originalNote) {
       return;
     }
-    const originalContent = originalNote.content_json;
-    const originalContentText = originalNote.content_text;
+    const originalContent = originalNote.contentJson;
+    const originalContentText = originalNote.contentText;
     const originalUpdatedAt = originalNote.updatedAt;
     const originalListOrderSeq = originalNote.listOrderSeq;
 
     const nextListOrderSeq = await localNotesRepository.reserveListOrderSeq();
-    const [originalHash, nextHash] = await Promise.all([hashJsonStable(originalContent), hashJsonStable(content_json)]);
+    const [originalHash, nextHash] = await Promise.all([hashJsonStable(originalContent), hashJsonStable(contentJson)]);
 
     if (originalHash === nextHash) {
       return;
@@ -183,8 +183,8 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         note.id === id
           ? {
               ...note,
-              content_json: content_json,
-              content_text: content_text,
+              contentJson,
+              contentText,
               updatedAt: new Date(),
               listOrderSeq: nextListOrderSeq,
             }
@@ -198,15 +198,13 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
     try {
       await localNotesRepository.update(id, {
-        content_json: content_json,
-        content_text: content_text,
+        contentJson,
+        contentText,
         listOrderSeq: nextListOrderSeq,
       });
 
-      set((state) => {
-        return {
-          error: null,
-        };
+      set({
+        error: null,
       });
     } catch (err) {
       console.error('Failed to update note content in IndexedDB:', err);
@@ -216,8 +214,8 @@ export const useNotesStore = create<NotesState>((set, get) => ({
           note.id === id
             ? {
                 ...note,
-                content_json: originalContent,
-                content_text: originalContentText,
+                contentJson: originalContent,
+                contentText: originalContentText,
                 updatedAt: originalUpdatedAt,
                 listOrderSeq: originalListOrderSeq,
                 baseVersion: originalNote.baseVersion,

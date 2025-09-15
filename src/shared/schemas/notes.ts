@@ -4,8 +4,8 @@ import { z } from 'zod';
 export interface BaseNote {
   id: string;
   title: string;
-  content_json: JSONContent;
-  content_text: string;
+  contentJson: JSONContent;
+  contentText: string;
   listOrderSeq: number;
   pinned: boolean;
   createdAt: Date;
@@ -20,9 +20,9 @@ export interface LocalNote extends BaseNote {
 }
 
 export type NoteDTO = BaseNote;
-export type NoteCreateDTO = Pick<BaseNote, 'id' | 'title' | 'content_text' | 'content_json' | 'listOrderSeq'>;
+export type NoteCreateDTO = Pick<BaseNote, 'id' | 'title' | 'contentText' | 'contentJson' | 'listOrderSeq'>;
 export type NotePatchDTO = Partial<
-  Pick<BaseNote, 'title' | 'content_text' | 'content_json' | 'listOrderSeq' | 'pinned'>
+  Pick<BaseNote, 'title' | 'contentText' | 'contentJson' | 'listOrderSeq' | 'pinned'>
 > & {
   baseVersion: number; // client's last known server version
 };
@@ -30,8 +30,8 @@ export type NotePatchDTO = Partial<
 export const NoteSchema = z.object({
   id: z.string(),
   title: z.string(),
-  content_text: z.string(),
-  content_json: z.custom<JSONContent>(),
+  contentText: z.string(),
+  contentJson: z.custom<JSONContent>(),
   listOrderSeq: z.number(),
   pinned: z.boolean(),
   // Coerce any ISO strings into date objects

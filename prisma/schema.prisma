@@ -17,8 +17,8 @@ datasource db {
 model Note {
   id           String    @id
   title        String    @db.VarChar(255)
-  content_text String
-  content_json String
+  contentText  String
+  contentJson  String
   listOrderSeq Int       @default(0)
   pinned       Boolean   @default(false)
   createdAt    DateTime  @default(now())

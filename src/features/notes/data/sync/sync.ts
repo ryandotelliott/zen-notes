@@ -43,15 +43,15 @@ async function pushLocalChanges(): Promise<SyncResults> {
           res = await notesApi.create({
             id: note.id,
             title: note.title,
-            content_text: note.content_text,
-            content_json: note.content_json,
+            contentText: note.contentText,
+            contentJson: note.contentJson,
             listOrderSeq: note.listOrderSeq,
           });
         } else if (doUpdate) {
           res = await notesApi.patch(note.id, {
             title: note.title,
-            content_text: note.content_text,
-            content_json: note.content_json,
+            contentText: note.contentText,
+            contentJson: note.contentJson,
             listOrderSeq: note.listOrderSeq,
             pinned: note.pinned,
             baseVersion,
@@ -83,8 +83,8 @@ async function pushLocalChanges(): Promise<SyncResults> {
               if (doUpdate) {
                 const retry = await notesApi.patch(note.id, {
                   title: note.title,
-                  content_text: note.content_text,
-                  content_json: note.content_json,
+                  contentText: note.contentText,
+                  contentJson: note.contentJson,
                   listOrderSeq: note.listOrderSeq,
                   pinned: note.pinned,
                   // Use server version as new baseVersion to force overwrite
@@ -124,8 +124,8 @@ async function pushLocalChanges(): Promise<SyncResults> {
             const createRes = await notesApi.create({
               id: note.id,
               title: note.title,
-              content_text: note.content_text,
-              content_json: note.content_json,
+              contentText: note.contentText,
+              contentJson: note.contentJson,
               listOrderSeq: note.listOrderSeq,
             });
             if (createRes.ok) {
