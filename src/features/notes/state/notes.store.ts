@@ -260,6 +260,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     });
 
     try {
+      await localNotesRepository.update(id, { title, listOrderSeq: nextListOrderSeq });
       set({
         error: null,
       });
@@ -339,11 +340,11 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     } catch (err) {
       console.error('Failed to delete note from IndexedDB:', err);
       // Rollback the optimistic update
-      set((state) => ({
+      set({
         error: 'Could not delete the note. Please try again.',
         notes: previousNotes,
         selectedNoteId: currentSelected,
-      }));
+      });
     }
   },
 }));
