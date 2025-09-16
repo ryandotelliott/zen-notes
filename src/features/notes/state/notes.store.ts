@@ -6,6 +6,7 @@ import { debounce, type DebouncedFunction } from '@/shared/lib/debounce';
 import { hashJsonStable, hashStringSHA256 } from '@/shared/lib/hashing-utils';
 import { sortObjectArrayByKeys } from '@/shared/lib/sorting-utils';
 import { computePreviewText } from '@/features/notes/lib/content-utils';
+import { getSyncController } from '@/features/notes/data/sync/sync-controller';
 
 interface NotesState {
   notes: LocalNote[];
@@ -82,15 +83,42 @@ export const useNotesStore = createWithEqualityFn<NotesState>((set, get) => ({
       set({ notes, isLoading: false, selectedNoteId: noteToSelect });
 
       // Lazily subscribe once to live updates so store stays in sync with Dexie.
-      // This is prevents us from having to publish events when syncing.
+      // Reconcile emissions with in-memory edits to avoid rolling back newer local content.
       if (!hasRepoSubscription) {
         const observable = localNotesRepository.observeAll();
         observable.subscribe({
           next: (emittedNotes) => {
-            const sorted = sortByListOrder(emittedNotes);
             const currentSelected = get().selectedNoteId;
             const previousNotes = get().notes;
-            const nextSelected = selectNextNote(previousNotes, emittedNotes, currentSelected);
+
+            const merged = emittedNotes.map((emitted) => {
+              const current = previousNotes.find((n) => n.id === emitted.id);
+              if (!current) return emitted;
+
+              // We want to prefer local content if:
+              // 1. The note is pending sync - we don't want to roll back changes that haven't been pushed yet
+              // 2. The note has been updated more recently than the emitted write
+              // 3. The note has a higher version than the emitted write
+              const preferLocalContent =
+                current.syncStatus === 'pending' ||
+                (current.updatedAt?.getTime?.() ?? 0) >= (emitted.updatedAt?.getTime?.() ?? 0) ||
+                (current.version ?? 0) > (emitted.version ?? 0);
+
+              return {
+                ...emitted,
+                // Preserve newer in-memory content if user has typed more since the emitted write started
+                contentJson: preferLocalContent ? current.contentJson : emitted.contentJson,
+                contentText: preferLocalContent ? current.contentText : emitted.contentText,
+                previewText: preferLocalContent ? current.previewText : emitted.previewText,
+                // Keep the most recent updatedAt aligned with the preserved content
+                updatedAt: preferLocalContent ? current.updatedAt : emitted.updatedAt,
+                // Never decrease ordering
+                listOrderSeq: Math.max(current.listOrderSeq ?? 0, emitted.listOrderSeq ?? 0),
+              };
+            });
+
+            const sorted = sortByListOrder(merged);
+            const nextSelected = selectNextNote(previousNotes, sorted, currentSelected);
 
             set({ notes: sorted, selectedNoteId: nextSelected, isLoading: false });
           },
@@ -137,6 +165,8 @@ export const useNotesStore = createWithEqualityFn<NotesState>((set, get) => ({
           selectedNoteId: savedNote.id,
         };
       });
+      // Trigger a sync for the newly added note
+      getSyncController().poke();
     } catch (err) {
       console.error('Failed to save note:', err);
       set((state) => ({
@@ -210,7 +240,7 @@ export const useNotesStore = createWithEqualityFn<NotesState>((set, get) => ({
       return { notes: sortByListOrder(newNotes) };
     });
 
-    const DEBOUNCE_MS_CONTENT = 500;
+    const DEBOUNCE_MS_CONTENT = 1_500;
     if (!contentDebouncers.has(id)) {
       const debouncedSave = debounce(async (json: object, text: string) => {
         try {
@@ -220,6 +250,8 @@ export const useNotesStore = createWithEqualityFn<NotesState>((set, get) => ({
           const seqToPersist =
             latestSeq > originalListOrderSeq ? latestSeq : await localNotesRepository.reserveListOrderSeq();
 
+          console.log('Debounced save for note', id);
+
           await localNotesRepository.update(id, {
             contentJson: json,
             contentText: text,
@@ -227,6 +259,8 @@ export const useNotesStore = createWithEqualityFn<NotesState>((set, get) => ({
             listOrderSeq: seqToPersist,
           });
           set({ error: null });
+          // Trigger sync after content has been persisted locally
+          getSyncController().poke();
         } catch (err) {
           console.error('Failed to persist note content in IndexedDB (debounced):', err);
           set((state) => ({
@@ -291,7 +325,7 @@ export const useNotesStore = createWithEqualityFn<NotesState>((set, get) => ({
       return { notes: sortByListOrder(newNotes) };
     });
 
-    const DEBOUNCE_MS_TITLE = 500;
+    const DEBOUNCE_MS_TITLE = 1_000;
     if (!titleDebouncers.has(id)) {
       const debouncedSave = debounce(async (t: string) => {
         try {
@@ -303,6 +337,8 @@ export const useNotesStore = createWithEqualityFn<NotesState>((set, get) => ({
 
           await localNotesRepository.update(id, { title: t, listOrderSeq: seqToPersist });
           set({ error: null });
+          // Trigger sync after title has been persisted locally
+          getSyncController().poke();
         } catch (err) {
           console.error('Failed to persist note title in IndexedDB (debounced):', err);
           set((state) => ({
@@ -342,6 +378,8 @@ export const useNotesStore = createWithEqualityFn<NotesState>((set, get) => ({
       set({
         error: null,
       });
+      // Trigger sync after pin state persisted locally
+      getSyncController().poke();
     } catch (err) {
       console.error('Failed to update note pinned in IndexedDB:', err);
       set((state) => {
@@ -370,6 +408,8 @@ export const useNotesStore = createWithEqualityFn<NotesState>((set, get) => ({
 
     try {
       await localNotesRepository.remove(id);
+      // Trigger sync after local delete success
+      getSyncController().poke();
     } catch (err) {
       console.error('Failed to delete note from IndexedDB:', err);
       set({
