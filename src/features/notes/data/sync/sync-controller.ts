@@ -12,10 +12,7 @@ type SyncController = {
 
 let instance: SyncController | null = null;
 
-const VISIBLE_PULL_CADENCE_MS = 30_000;
-const IDLE_PULL_CADENCE_MS = 120_000;
-const INITIAL_BACKOFF_MS = 1_000;
-const MAX_BACKOFF_MS = 60_000;
+const POKE_DEBOUNCE_MS = 1_500;
 
 export function getSyncController(): SyncController {
   if (instance) return instance;
@@ -23,8 +20,9 @@ export function getSyncController(): SyncController {
   const LOCK_NAME = 'notes-sync-leader';
   let running = false;
   let stopped = false;
-  let timer: number | null = null;
-  let backoff = INITIAL_BACKOFF_MS;
+  let debounceTimer: number | null = null;
+  let syncInFlight = false;
+  let pendingSync = false;
   let releaseLeader: (() => void) | null = null;
 
   async function syncOnce() {
@@ -40,42 +38,47 @@ export function getSyncController(): SyncController {
 
   function scheduleImmediate() {
     if (!running) return;
-
-    if (timer) {
-      clearTimeout(timer);
-      timer = null;
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
     }
-
-    loopTick(true);
+    runSync();
   }
 
-  async function loopTick(immediate = false) {
+  function scheduleDebounced() {
     if (!running || stopped) return;
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
+    debounceTimer = window.setTimeout(() => {
+      debounceTimer = null;
+      runSync();
+    }, POKE_DEBOUNCE_MS);
+  }
 
-    // collapse multiple calls
-    if (!immediate && timer) return;
+  async function runSync() {
+    if (!running || stopped) return;
+    if (!navigator.onLine) return;
+    if (syncInFlight) {
+      // coalesce multiple triggers; run once more after current finishes
+      pendingSync = true;
+      return;
+    }
 
-    const doTick = async () => {
-      try {
-        if (navigator.onLine) {
-          await syncOnce();
-          backoff = INITIAL_BACKOFF_MS;
-        }
-      } catch {
-        backoff = Math.min(backoff * 2, MAX_BACKOFF_MS); // 1s..60s
-      } finally {
-        const visible = !document.hidden;
-        const next = visible ? VISIBLE_PULL_CADENCE_MS : IDLE_PULL_CADENCE_MS; // idle pull cadence
-        const delay = Math.max(backoff, next);
-        timer = window.setTimeout(() => {
-          // allow the next tick to proceed
-          timer = null;
-          loopTick(false);
-        }, delay);
+    syncInFlight = true;
+    try {
+      await syncOnce();
+    } catch {
+      // errors are logged in syncOnce; do not schedule retries automatically
+    } finally {
+      syncInFlight = false;
+      if (pendingSync) {
+        pendingSync = false;
+        // run one more time to capture batched changes
+        runSync();
       }
-    };
-
-    await doTick();
+    }
   }
 
   /**
@@ -92,15 +95,15 @@ export function getSyncController(): SyncController {
     window.addEventListener('online', onOnline);
     document.addEventListener('visibilitychange', onVisibility);
 
-    // Initial kicks
+    // Initial one-time sync on start
     scheduleImmediate();
 
     // Cleanup hook
     const stopLeader = () => {
       running = false;
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
       }
       window.removeEventListener('online', onOnline);
       document.removeEventListener('visibilitychange', onVisibility);
@@ -143,7 +146,7 @@ export function getSyncController(): SyncController {
       instance?._stopLeader?.();
     },
     poke() {
-      scheduleImmediate();
+      scheduleDebounced();
     },
     _stopLeader: () => {},
   };
