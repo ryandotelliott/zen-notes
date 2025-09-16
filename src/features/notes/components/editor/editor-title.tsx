@@ -7,8 +7,6 @@ function cleanText(t: string) {
   return t.replace(/\u200B/g, '').trim();
 }
 
-const AUTOSAVE_DEBOUNCE_MS = 500;
-
 export default function EditorTitle({
   onKeyDown,
   className,
@@ -23,10 +21,6 @@ export default function EditorTitle({
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   const latestTitleRef = useRef<string>('');
 
-  const debouncedUpdate = useDebouncedCallback((noteId: string, title: string) => {
-    updateNoteTitle(noteId, title);
-  }, AUTOSAVE_DEBOUNCE_MS);
-
   useEffect(() => {
     const el = titleRef.current;
     if (!el) return;
@@ -38,12 +32,12 @@ export default function EditorTitle({
       latestTitleRef.current = cleanText(el.textContent || '');
       const currentNoteId = useNotesStore.getState().selectedNoteId;
       if (!currentNoteId) return;
-      debouncedUpdate(currentNoteId, latestTitleRef.current);
+      updateNoteTitle(currentNoteId, latestTitleRef.current);
     };
 
     el.addEventListener('input', onInput);
     return () => el.removeEventListener('input', onInput);
-  }, [debouncedUpdate]);
+  }, [updateNoteTitle]);
 
   // Sync title from store whenever the active note or its title changes (including Dexie updates)
   useEffect(() => {
@@ -61,19 +55,6 @@ export default function EditorTitle({
     el.dataset.empty = String(newText.length === 0);
     latestTitleRef.current = newText; // keep ref in sync
   }, [selectedNoteId, activeNote?.title, activeNote?.updatedAt]);
-
-  // Clear autosave on unmount and when switching notes
-  useEffect(() => {
-    debouncedUpdate.cancel();
-
-    return () => {
-      debouncedUpdate.cancel();
-
-      if (selectedNoteId) {
-        debouncedUpdate(selectedNoteId, latestTitleRef.current);
-      }
-    };
-  }, [selectedNoteId, debouncedUpdate]);
 
   return (
     <h1

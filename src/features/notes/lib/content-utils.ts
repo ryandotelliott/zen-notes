@@ -1,3 +1,3 @@
 export function computePreviewText(contentText: string): string {
-  return contentText.substring(0, 100).trim();
+  return contentText.substring(0, 50).trim();
 }
