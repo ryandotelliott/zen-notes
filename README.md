@@ -13,21 +13,6 @@ It provides rich text editing and AI capabilities, without the clutter and bloat
 - **Customizable themes** – personalize your workspace with minimal, focused designs.
 - **Pinned notes** – keep important documents at the top for quick access.
 
-### 🤖 AI
-
-- **Voice Transcription** – high-quality speech-to-text transcriptions.
-- **Semantic search** – find notes by meaning, not just keywords.
-- **AI assistant** – rewrite or generate content directly in your notes.
-- **AI Chat** – chat with AI that has access to your notes.
-
----
-
-## 🛠️ Roadmap
-
-- **Desktop app (Tauri)** – native cross-platform experience.
-- **Mobile app (React Native)** – fast, offline-capable mobile client.
-- **End-to-end encryption** – privacy and security built-in.
-
 ---
 
 ## 📦 Tech Stack
@@ -35,7 +20,6 @@ It provides rich text editing and AI capabilities, without the clutter and bloat
 - **Frontend**: Next.js (App Router), TipTap editor, Tailwind + ShadCN UI
 - **Backend**: Prisma + Postgres (sync + storage)
 - **Offline**: IndexedDB (Dexie) for local persistence
-- **AI**: OpenAI APIs (Whisper, GPT), embeddings for semantic search
 
 ---
 
